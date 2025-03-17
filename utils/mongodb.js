@@ -58,9 +58,29 @@ export async function closeConnection() {
       console.log('MongoDB connection closed');
     } catch (error) {
       console.error('Error closing MongoDB connection:', error);
+      throw new Error(`Failed to close database connection: ${error.message}`);
     } finally {
       cachedClient = null;
       cachedDb = null;
+    }
+  }
+}
+
+// Helper function to handle MongoDB operations with proper error handling
+export async function withDatabase(operation) {
+  let db = null;
+  try {
+    const { db: database } = await connectToDatabase();
+    db = database;
+    return await operation(db);
+  } catch (error) {
+    if (error instanceof DatabaseError) {
+      throw error;
+    }
+    throw new DatabaseError(`Database operation failed: ${error.message}`);
+  } finally {
+    if (db) {
+      await closeConnection();
     }
   }
 } 

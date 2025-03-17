@@ -46,6 +46,10 @@ app.get('/users', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'users.html'));
 });
 
+app.get('/history', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'history.html'));
+});
+
 // API endpoints
 app.get('/api/players', async (req, res) => {
   try {
@@ -152,6 +156,25 @@ app.post('/api/players/reset-ratings', async (req, res) => {
   }
 });
 
+// Get match history
+app.get('/api/matches', async (req, res) => {
+  try {
+    const { db } = await connectToDatabase();
+    const matches = await db.collection('matches')
+      .find({})
+      .sort({ timestamp: -1 })
+      .limit(50) // Limit to last 50 matches
+      .toArray();
+    
+    await closeConnection();
+    res.json(matches || []);
+  } catch (error) {
+    console.error('Error fetching matches:', error);
+    await closeConnection();
+    res.status(500).json({ error: 'Failed to fetch matches' });
+  }
+});
+
 app.post('/api/match', async (req, res) => {
   const { team1, team2, winner } = req.body;
   
@@ -206,18 +229,42 @@ app.post('/api/match', async (req, res) => {
       );
     }
 
-    // Record the match
-    await db.collection('matches').insertOne({
-      team1_defender: team1.defender,
-      team1_attacker: team1.attacker,
-      team2_defender: team2.defender,
-      team2_attacker: team2.attacker,
+    // Record the match with enhanced details
+    const match = {
+      team1: {
+        defender: team1.defender,
+        attacker: team1.attacker,
+        defender_rating: newTeam1Ratings[0].mu,
+        attacker_rating: newTeam1Ratings[1].mu
+      },
+      team2: {
+        defender: team2.defender,
+        attacker: team2.attacker,
+        defender_rating: newTeam2Ratings[0].mu,
+        attacker_rating: newTeam2Ratings[1].mu
+      },
       winner,
-      timestamp: new Date()
+      timestamp: new Date(),
+      team1_win_probability: ts.expect(team1Ratings, team2Ratings),
+      team2_win_probability: ts.expect(team2Ratings, team1Ratings)
+    };
+
+    await db.collection('matches').insertOne(match);
+
+    // Log the match result
+    console.log('Match recorded:', {
+      timestamp: match.timestamp,
+      winner: winner === 1 ? 'Team 1' : 'Team 2',
+      team1: `${team1.defender} (${match.team1.defender_rating.toFixed(2)}) & ${team1.attacker} (${match.team1.attacker_rating.toFixed(2)})`,
+      team2: `${team2.defender} (${match.team2.defender_rating.toFixed(2)}) & ${team2.attacker} (${match.team2.attacker_rating.toFixed(2)})`,
+      win_probability: {
+        team1: (match.team1_win_probability * 100).toFixed(1) + '%',
+        team2: (match.team2_win_probability * 100).toFixed(1) + '%'
+      }
     });
 
     await closeConnection();
-    res.json({ success: true });
+    res.json({ success: true, match });
   } catch (error) {
     console.error('Error processing match:', error);
     await closeConnection();
