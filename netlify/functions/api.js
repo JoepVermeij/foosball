@@ -1,89 +1,76 @@
 import express from 'express';
 import serverless from 'serverless-http';
-import sqlite3 from 'sqlite3';
-import { Rating, TrueSkill } from 'ts-trueskill';
+import { TrueSkill, Rating } from 'ts-trueskill';
+import { connectToDatabase, closeConnection } from './utils/mongodb.js';
+import cors from 'cors';
 
 const app = express();
+
+// Enable CORS for all routes
+app.use(cors({
+  origin: ['https://fascinating-clafoutis-9bdd1b.netlify.app', 'http://localhost:8888'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json());
 
 // Initialize TrueSkill
 const ts = new TrueSkill();
 
-// Default rating values
+// Default TrueSkill rating values
 const DEFAULT_RATING = 25.0;
 const DEFAULT_DEVIATION = 8.333;
 
-// Middleware
-app.use(express.json());
-
-// For development purposes, use SQLite
-// Note: For production on Netlify, you should use a proper database service
-// like FaunaDB, MongoDB Atlas, etc., as Netlify's serverless functions
-// can't persist SQLite databases between function invocations
-let db;
-try {
-  db = new sqlite3.Database('/tmp/foosball.db', (err) => {
-    if (err) {
-      console.error('Error opening database:', err);
-      return;
-    }
-    console.log('Connected to SQLite database');
-    
-    // Create tables if they don't exist
-    db.run(`CREATE TABLE IF NOT EXISTS players (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT UNIQUE,
-      position TEXT DEFAULT 'any',
-      rating REAL DEFAULT 25.0,
-      rating_deviation REAL DEFAULT 8.333
-    )`);
-
-    db.run(`CREATE TABLE IF NOT EXISTS matches (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      team1_defender TEXT,
-      team1_attacker TEXT,
-      team2_defender TEXT,
-      team2_attacker TEXT,
-      winner INTEGER,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-  });
-} catch (error) {
-  console.error('Database connection error:', error);
-}
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
 
 // API endpoints
-app.get('/api/players', (req, res) => {
-  db.all('SELECT * FROM players ORDER BY rating DESC', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
+app.get('/players', async (req, res) => {
+  try {
+    const { db } = await connectToDatabase();
+    const players = await db.collection('players').find({}).sort({ rating: -1 }).toArray();
+    await closeConnection();
+    res.json(players || []);
+  } catch (error) {
+    console.error('Error fetching players:', error);
+    await closeConnection();
+    res.status(500).json({ error: 'Failed to fetch players' });
+  }
 });
 
 // Get players by position
-app.get('/api/players/:position', (req, res) => {
+app.get('/players/:position', async (req, res) => {
   const position = req.params.position;
   if (!['defender', 'attacker', 'any'].includes(position)) {
     return res.status(400).json({ error: 'Invalid position. Must be defender, attacker, or any' });
   }
   
-  const query = position === 'any' 
-    ? 'SELECT * FROM players ORDER BY rating DESC' 
-    : 'SELECT * FROM players WHERE position = ? OR position = "any" ORDER BY rating DESC';
-  
-  db.all(query, position === 'any' ? [] : [position], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
+  try {
+    const { db } = await connectToDatabase();
+    const query = position === 'any' 
+      ? {} 
+      : { $or: [{ position }, { position: 'any' }] };
+    
+    const players = await db.collection('players')
+      .find(query)
+      .sort({ rating: -1 })
+      .toArray();
+    
+    await closeConnection();
+    res.json(players || []);
+  } catch (error) {
+    console.error('Error fetching players by position:', error);
+    await closeConnection();
+    res.status(500).json({ error: 'Failed to fetch players' });
+  }
 });
 
 // Add a new player
-app.post('/api/players', (req, res) => {
+app.post('/players', async (req, res) => {
   const { name, position = 'any' } = req.body;
   
   if (!name || name.trim() === '') {
@@ -94,54 +81,60 @@ app.post('/api/players', (req, res) => {
     return res.status(400).json({ error: 'Invalid position. Must be defender, attacker, or any' });
   }
   
-  db.run(
-    'INSERT INTO players (name, position, rating, rating_deviation) VALUES (?, ?, ?, ?)',
-    [name.trim(), position, DEFAULT_RATING, DEFAULT_DEVIATION],
-    function(err) {
-      if (err) {
-        // Check for duplicate name (SQLITE_CONSTRAINT_UNIQUE error)
-        if (err.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ error: 'A player with this name already exists' });
-        }
-        return res.status(500).json({ error: err.message });
-      }
-      
-      res.status(201).json({ 
-        id: this.lastID,
-        name: name.trim(),
-        position,
-        rating: DEFAULT_RATING,
-        rating_deviation: DEFAULT_DEVIATION
-      });
+  try {
+    const { db } = await connectToDatabase();
+    
+    // Check if player already exists
+    const existingPlayer = await db.collection('players').findOne({ name: name.trim() });
+    if (existingPlayer) {
+      await closeConnection();
+      return res.status(400).json({ error: 'A player with this name already exists' });
     }
-  );
+    
+    const player = {
+      name: name.trim(),
+      position,
+      rating: DEFAULT_RATING,
+      rating_deviation: DEFAULT_DEVIATION
+    };
+    
+    await db.collection('players').insertOne(player);
+    await closeConnection();
+    res.status(201).json(player);
+  } catch (error) {
+    console.error('Error adding player:', error);
+    await closeConnection();
+    res.status(500).json({ error: 'Failed to add player' });
+  }
 });
 
 // Reset all player ratings to default values
-app.post('/api/players/reset-ratings', async (req, res) => {
+app.post('/players/reset-ratings', async (req, res) => {
   try {
-    await new Promise((resolve, reject) => {
-      db.run(
-        'UPDATE players SET rating = ?, rating_deviation = ?',
-        [DEFAULT_RATING, DEFAULT_DEVIATION],
-        (err) => {
-          if (err) reject(err);
-          else resolve();
+    const { db } = await connectToDatabase();
+    await db.collection('players').updateMany(
+      {},
+      { 
+        $set: { 
+          rating: DEFAULT_RATING,
+          rating_deviation: DEFAULT_DEVIATION
         }
-      );
-    });
+      }
+    );
     
+    await closeConnection();
     res.json({ 
       success: true, 
       message: 'All player ratings have been reset to default values'
     });
   } catch (error) {
     console.error('Error resetting ratings:', error);
-    res.status(500).json({ error: error.message });
+    await closeConnection();
+    res.status(500).json({ error: 'Failed to reset ratings' });
   }
 });
 
-app.post('/api/match', async (req, res) => {
+app.post('/match', async (req, res) => {
   const { team1, team2, winner } = req.body;
   
   // Validate positions
@@ -150,18 +143,13 @@ app.post('/api/match', async (req, res) => {
   }
   
   try {
+    const { db } = await connectToDatabase();
+    
     // Get all players involved in the match
     const playerNames = [team1.defender, team1.attacker, team2.defender, team2.attacker];
-    
-    // Get current ratings for all players
-    const players = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM players WHERE name IN (?, ?, ?, ?)',
-        playerNames,
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        });
-    });
+    const players = await db.collection('players')
+      .find({ name: { $in: playerNames } })
+      .toArray();
 
     // Create rating objects for TrueSkill
     const ratings = {};
@@ -193,34 +181,29 @@ app.post('/api/match', async (req, res) => {
     ];
 
     for (const [name, rating, deviation] of updates) {
-      await new Promise((resolve, reject) => {
-        db.run(
-          'INSERT OR REPLACE INTO players (name, rating, rating_deviation) VALUES (?, ?, ?)',
-          [name, rating, deviation],
-          (err) => {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
-      });
+      await db.collection('players').updateOne(
+        { name },
+        { $set: { rating, rating_deviation: deviation } },
+        { upsert: true }
+      );
     }
 
     // Record the match
-    await new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO matches (team1_defender, team1_attacker, team2_defender, team2_attacker, winner) VALUES (?, ?, ?, ?, ?)',
-        [team1.defender, team1.attacker, team2.defender, team2.attacker, winner],
-        (err) => {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
+    await db.collection('matches').insertOne({
+      team1_defender: team1.defender,
+      team1_attacker: team1.attacker,
+      team2_defender: team2.defender,
+      team2_attacker: team2.attacker,
+      winner,
+      timestamp: new Date()
     });
 
+    await closeConnection();
     res.json({ success: true });
   } catch (error) {
     console.error('Error processing match:', error);
-    res.status(500).json({ error: error.message });
+    await closeConnection();
+    res.status(500).json({ error: 'Failed to process match' });
   }
 });
 
