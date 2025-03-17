@@ -75,14 +75,22 @@
             try {
                 let url = '/api/players';
                 if (positionFilter !== 'all' && ['defender', 'attacker', 'any'].includes(positionFilter)) {
-                    url = `/api/players/${positionFilter}`;
+                    url = `/players/${positionFilter}`;
                 }
 
+                console.log('Fetching from URL:', url);
                 const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const players = await response.json();
                 
                 const playersList = document.getElementById('playersList');
                 playersList.innerHTML = '';
+                
+                if (!Array.isArray(players)) {
+                    throw new Error('Invalid response format: expected an array');
+                }
                 
                 players.forEach(player => {
                     const item = document.createElement('li');
@@ -102,6 +110,12 @@
                 });
             } catch (error) {
                 console.error('Error loading players:', error);
+                const playersList = document.getElementById('playersList');
+                playersList.innerHTML = `
+                    <li class="py-3 text-red-600">
+                        Error loading players. Please try again later.
+                    </li>
+                `;
             }
         }
 
