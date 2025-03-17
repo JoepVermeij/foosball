@@ -3,151 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Foosball Players</title>
+    <title>Players - Foosball Rating System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Manage Players</h1>
-            <div class="space-x-4">
-                <a href="/" class="text-blue-500 hover:text-blue-600">Leaderboard</a>
-                <a href="/match" class="text-blue-500 hover:text-blue-600">Record Match</a>
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Players</h1>
+        
+        <!-- Navigation Menu -->
+        <nav class="bg-white shadow-md rounded-lg p-4 mb-8">
+            <ul class="flex space-x-4">
+                <li><a href="/" class="text-gray-600 hover:text-gray-900">Home</a></li>
+                <li><a href="/match" class="text-gray-600 hover:text-gray-900">Record Match</a></li>
+                <li><a href="/users" class="text-blue-600 font-semibold">Players</a></li>
+                <li><a href="/history" class="text-gray-600 hover:text-gray-900">History</a></li>
+            </ul>
+        </nav>
+
+        <!-- Add Player Form -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Add New Player</h2>
+            <form id="addPlayerForm" class="space-y-4">
+                <div>
+                    <label for="playerName" class="block text-sm font-medium text-gray-700">Player Name</label>
+                    <input type="text" id="playerName" name="name" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <button type="submit" 
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Add Player
+                </button>
+            </form>
+        </div>
+
+        <!-- Player List -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">All Players</h2>
+            <div id="playersList" class="space-y-4">
+                <!-- Players will be listed here -->
             </div>
         </div>
 
-        <nav class="nav-menu">
-            <a href="/" class="nav-item">Home</a>
-            <a href="/match" class="nav-item">New Match</a>
-            <a href="/users" class="nav-item active">Players</a>
-            <a href="/history" class="nav-item">Match History</a>
-        </nav>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Add New Player -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">Add New Player</h2>
-                <form id="addPlayerForm" class="space-y-4">
-                    <div>
-                        <label for="playerName" class="block text-sm font-medium text-gray-700">Player Name</label>
-                        <input type="text" id="playerName" name="playerName" required
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    </div>
-                    <div>
-                        <label for="playerPosition" class="block text-sm font-medium text-gray-700">Position</label>
-                        <select id="playerPosition" name="playerPosition" 
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="any">Any Position</option>
-                            <option value="defender">Defender</option>
-                            <option value="attacker">Attacker</option>
-                        </select>
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit"
-                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
-                            Add Player
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Existing Players -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold text-gray-700">Existing Players</h2>
-                    <div class="flex space-x-2">
-                        <select id="positionFilter" class="text-sm rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="all">All Positions</option>
-                            <option value="defender">Defenders</option>
-                            <option value="attacker">Attackers</option>
-                            <option value="any">Any Position</option>
-                        </select>
-                        <button id="resetRatingsBtn" 
-                            class="bg-red-500 text-white px-3 py-1 text-sm rounded hover:bg-red-600 transition-colors">
-                            Reset All Ratings
-                        </button>
-                    </div>
-                </div>
-                <div class="overflow-y-auto max-h-96">
-                    <ul id="playersList" class="divide-y divide-gray-200">
-                        <!-- Player list will be populated here -->
-                    </ul>
-                </div>
-            </div>
+        <!-- Reset Ratings Button -->
+        <div class="mt-8">
+            <button id="resetRatings" 
+                    class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                Reset All Ratings
+            </button>
         </div>
     </div>
 
     <script>
-        async function loadPlayers(positionFilter = 'all') {
+        // Fetch and display players
+        async function fetchPlayers() {
             try {
-                let url = '/api/players';
-                if (positionFilter !== 'all' && ['defender', 'attacker', 'any'].includes(positionFilter)) {
-                    url = `/players/${positionFilter}`;
+                const [defendersResponse, attackersResponse] = await Promise.all([
+                    fetch('/api/players/defender'),
+                    fetch('/api/players/attacker')
+                ]);
+
+                if (!defendersResponse.ok || !attackersResponse.ok) {
+                    throw new Error('Failed to fetch players');
                 }
 
-                console.log('Fetching from URL:', url);
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const players = await response.json();
-                
-                const playersList = document.getElementById('playersList');
-                playersList.innerHTML = '';
-                
-                if (!Array.isArray(players)) {
-                    throw new Error('Invalid response format: expected an array');
-                }
-                
-                players.forEach(player => {
-                    const item = document.createElement('li');
-                    item.className = 'py-3';
-                    item.innerHTML = `
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <span class="text-gray-900">${player.name}</span>
-                                <span class="ml-2 px-2 py-1 text-xs rounded-full ${getPositionColor(player.position)}">
-                                    ${capitalizeFirstLetter(player.position || 'Any')}
-                                </span>
-                            </div>
-                            <span class="text-gray-500">Rating: ${player.rating.toFixed(2)}</span>
-                        </div>
-                    `;
-                    playersList.appendChild(item);
+                const defenders = await defendersResponse.json();
+                const attackers = await attackersResponse.json();
+
+                // Combine players and their ratings
+                const players = {};
+                defenders.forEach(player => {
+                    players[player.name] = {
+                        name: player.name,
+                        defender_rating: player.rating,
+                        defender_deviation: player.rating_deviation
+                    };
                 });
+                attackers.forEach(player => {
+                    if (players[player.name]) {
+                        players[player.name].attacker_rating = player.rating;
+                        players[player.name].attacker_deviation = player.rating_deviation;
+                    } else {
+                        players[player.name] = {
+                            name: player.name,
+                            attacker_rating: player.rating,
+                            attacker_deviation: player.rating_deviation
+                        };
+                    }
+                });
+
+                displayPlayers(Object.values(players));
             } catch (error) {
-                console.error('Error loading players:', error);
-                const playersList = document.getElementById('playersList');
-                playersList.innerHTML = `
-                    <li class="py-3 text-red-600">
-                        Error loading players. Please try again later.
-                    </li>
-                `;
+                console.error('Error fetching players:', error);
+                alert('Failed to fetch players');
             }
         }
 
-        function getPositionColor(position) {
-            switch(position) {
-                case 'defender': return 'bg-blue-100 text-blue-800';
-                case 'attacker': return 'bg-green-100 text-green-800';
-                default: return 'bg-gray-100 text-gray-800';
-            }
+        // Display players with both ratings
+        function displayPlayers(players) {
+            const list = document.getElementById('playersList');
+            list.innerHTML = players.map(player => `
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-medium text-gray-800 text-lg">${player.name}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white p-3 rounded-md shadow-sm">
+                            <div class="text-sm text-gray-600 mb-1">Defender Rating</div>
+                            <div class="text-lg font-semibold text-gray-800">${(player.defender_rating || 0).toFixed(2)}</div>
+                        </div>
+                        <div class="bg-white p-3 rounded-md shadow-sm">
+                            <div class="text-sm text-gray-600 mb-1">Attacker Rating</div>
+                            <div class="text-lg font-semibold text-gray-800">${(player.attacker_rating || 0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        function capitalizeFirstLetter(string) {
-            return string.charAt(0).toUpperCase() + string.slice(1);
-        }
-
+        // Add new player
         document.getElementById('addPlayerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const playerName = document.getElementById('playerName').value.trim();
-            const playerPosition = document.getElementById('playerPosition').value;
-            
-            if (!playerName) {
-                alert('Please enter a player name');
-                return;
-            }
+            const name = document.getElementById('playerName').value.trim();
             
             try {
                 const response = await fetch('/api/players', {
@@ -155,59 +132,46 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ 
-                        name: playerName,
-                        position: playerPosition
-                    })
+                    body: JSON.stringify({ name })
                 });
-                
-                if (response.ok) {
-                    document.getElementById('playerName').value = '';
-                    document.getElementById('playerPosition').value = 'any';
-                    loadPlayers(document.getElementById('positionFilter').value);
-                    alert('Player added successfully!');
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to add player');
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to add player');
                 }
+
+                document.getElementById('playerName').value = '';
+                fetchPlayers();
             } catch (error) {
-                console.error('Error:', error);
-                alert(error.message || 'Error adding player. Please try again.');
+                console.error('Error adding player:', error);
+                alert(error.message);
             }
         });
 
-        document.getElementById('positionFilter').addEventListener('change', (e) => {
-            loadPlayers(e.target.value);
-        });
-
-        document.getElementById('resetRatingsBtn').addEventListener('click', async () => {
-            if (!confirm('Are you sure you want to reset all player ratings to default values? This action cannot be undone.')) {
+        // Reset ratings
+        document.getElementById('resetRatings').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to reset all player ratings? This cannot be undone.')) {
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/players/reset-ratings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    method: 'POST'
                 });
-                
-                if (response.ok) {
-                    loadPlayers(document.getElementById('positionFilter').value);
-                    alert('All player ratings have been reset to default values.');
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to reset ratings');
+
+                if (!response.ok) {
+                    throw new Error('Failed to reset ratings');
                 }
+
+                fetchPlayers();
             } catch (error) {
-                console.error('Error:', error);
-                alert(error.message || 'Error resetting ratings. Please try again.');
+                console.error('Error resetting ratings:', error);
+                alert('Failed to reset ratings');
             }
         });
 
-        // Load players on page load
-        loadPlayers();
+        // Initial load
+        fetchPlayers();
     </script>
 </body>
 </html> 

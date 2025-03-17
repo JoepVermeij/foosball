@@ -3,119 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Foosball Leaderboard</title>
+    <title>Foosball Rating System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Foosball Leaderboard</h1>
-            <div class="space-x-4">
-                <a href="/match" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
-                    Record New Match
-                </a>
-                <a href="/users" class="text-blue-500 hover:text-blue-600">
-                    Manage Players
-                </a>
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Foosball Rating System</h1>
+        
+        <!-- Navigation Menu -->
+        <nav class="bg-white shadow-md rounded-lg p-4 mb-8">
+            <ul class="flex space-x-4">
+                <li><a href="/" class="text-blue-600 font-semibold">Home</a></li>
+                <li><a href="/match" class="text-gray-600 hover:text-gray-900">Record Match</a></li>
+                <li><a href="/users" class="text-gray-600 hover:text-gray-900">Players</a></li>
+                <li><a href="/history" class="text-gray-600 hover:text-gray-900">History</a></li>
+            </ul>
+        </nav>
+
+        <!-- Leaderboards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Defenders Leaderboard -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Defender Rankings</h2>
+                <div id="defendersList" class="space-y-2">
+                    <!-- Defenders will be listed here -->
+                </div>
+            </div>
+
+            <!-- Attackers Leaderboard -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Attacker Rankings</h2>
+                <div id="attackersList" class="space-y-2">
+                    <!-- Attackers will be listed here -->
+                </div>
             </div>
         </div>
 
-        <div class="mb-4">
-            <select id="positionFilter" class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                <option value="all">All Positions</option>
-                <option value="defender">Defenders Only</option>
-                <option value="attacker">Attackers Only</option>
-                <option value="any">Flex Players</option>
-            </select>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <table class="min-w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deviation</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboard" class="bg-white divide-y divide-gray-200">
-                    <!-- Leaderboard rows will be inserted here -->
-                </tbody>
-            </table>
+        <!-- Recent Matches -->
+        <div class="mt-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Matches</h2>
+            <div id="recentMatches" class="space-y-4">
+                <!-- Recent matches will be listed here -->
+            </div>
         </div>
     </div>
 
     <script>
-        async function loadLeaderboard(positionFilter = 'all') {
+        // Fetch and display players
+        async function fetchPlayers() {
             try {
-                const url = positionFilter === 'all' 
-                    ? '/api/players' 
-                    : `/api/players/${positionFilter}`;
-                console.log('Fetching from URL:', url);
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                const [defendersResponse, attackersResponse] = await Promise.all([
+                    fetch('/api/players/defender'),
+                    fetch('/api/players/attacker')
+                ]);
+
+                if (!defendersResponse.ok || !attackersResponse.ok) {
+                    throw new Error('Failed to fetch players');
                 }
-                const players = await response.json();
-                
-                const leaderboard = document.getElementById('leaderboard');
-                leaderboard.innerHTML = '';
-                
-                if (!Array.isArray(players)) {
-                    throw new Error('Invalid response format: expected an array');
-                }
-                
-                players.forEach((player, index) => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${index + 1}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.name}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <span class="px-2 py-1 text-xs rounded-full ${getPositionColor(player.position)}">
-                                ${capitalizeFirstLetter(player.position || 'Any')}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.rating.toFixed(2)}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.rating_deviation.toFixed(2)}</td>
-                    `;
-                    leaderboard.appendChild(row);
-                });
+
+                const defenders = await defendersResponse.json();
+                const attackers = await attackersResponse.json();
+
+                displayPlayers(defenders, 'defendersList');
+                displayPlayers(attackers, 'attackersList');
             } catch (error) {
-                console.error('Error loading leaderboard:', error);
-                const leaderboard = document.getElementById('leaderboard');
-                leaderboard.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="px-6 py-4 text-red-600 text-center">
-                            Error loading leaderboard. Please try again later.
-                        </td>
-                    </tr>
-                `;
+                console.error('Error fetching players:', error);
+                alert('Failed to fetch players');
             }
         }
 
-        function getPositionColor(position) {
-            switch(position) {
-                case 'defender': return 'bg-blue-100 text-blue-800';
-                case 'attacker': return 'bg-green-100 text-green-800';
-                default: return 'bg-gray-100 text-gray-800';
+        // Display players in the specified list
+        function displayPlayers(players, listId) {
+            const list = document.getElementById(listId);
+            
+            // Sort players by rating in descending order
+            const sortedPlayers = [...players].sort((a, b) => b.rating - a.rating);
+            
+            list.innerHTML = sortedPlayers.map((player, index) => `
+                <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                    <div class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full font-semibold mr-3">
+                        ${index + 1}
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">${player.name}</div>
+                        <div class="text-sm text-gray-600">
+                            Rating: ${player.rating.toFixed(2)} ± ${player.rating_deviation.toFixed(2)}
+                            <span class="ml-2">•</span>
+                            <span>${player.matches_played} matches</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Fetch and display recent matches
+        async function fetchRecentMatches() {
+            try {
+                const response = await fetch('/api/matches');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch matches');
+                }
+
+                const matches = await response.json();
+                displayMatches(matches);
+            } catch (error) {
+                console.error('Error fetching matches:', error);
+                alert('Failed to fetch matches');
             }
         }
 
-        function capitalizeFirstLetter(string) {
-            return string.charAt(0).toUpperCase() + string.slice(1);
+        // Display recent matches
+        function displayMatches(matches) {
+            const container = document.getElementById('recentMatches');
+            container.innerHTML = matches.map(match => `
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="text-sm text-gray-600">
+                            ${new Date(match.timestamp).toLocaleString()}
+                        </div>
+                        <div class="font-medium ${match.winner === 1 ? 'text-green-600' : 'text-red-600'}">
+                            ${match.winner === 1 ? 'Team 1 Won' : 'Team 2 Won'}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <div class="font-medium text-gray-800">Team 1</div>
+                            <div class="text-sm text-gray-600">Defender: ${match.team1.defender} (${match.team1.defender_rating.toFixed(2)})</div>
+                            <div class="text-sm text-gray-600">Attacker: ${match.team1.attacker} (${match.team1.attacker_rating.toFixed(2)})</div>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <div class="font-medium text-gray-800">Team 2</div>
+                            <div class="text-sm text-gray-600">Defender: ${match.team2.defender} (${match.team2.defender_rating.toFixed(2)})</div>
+                            <div class="text-sm text-gray-600">Attacker: ${match.team2.attacker} (${match.team2.attacker_rating.toFixed(2)})</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        document.getElementById('positionFilter').addEventListener('change', (e) => {
-            loadLeaderboard(e.target.value);
-        });
-
-        // Load leaderboard on page load
-        loadLeaderboard();
-        
-        // Refresh leaderboard every 30 seconds
-        setInterval(() => loadLeaderboard(document.getElementById('positionFilter').value), 30000);
+        // Initial load
+        fetchPlayers();
+        fetchRecentMatches();
     </script>
 </body>
 </html> 

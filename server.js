@@ -22,6 +22,9 @@ const ts = new TrueSkill();
 const DEFAULT_RATING = 25.0;
 const DEFAULT_DEVIATION = 8.333;
 
+// Add this near the top with other constants
+const ADMIN_PASSWORD = 'fdsfrew4234erasdf'; // You can change this password
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -43,7 +46,12 @@ app.get('/match', (req, res) => {
 });
 
 app.get('/users', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'users.html'));
+  const password = req.query.password;
+  if (password === ADMIN_PASSWORD) {
+    res.sendFile(path.join(__dirname, 'public', 'users.html'));
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  }
 });
 
 app.get('/history', (req, res) => {
@@ -67,23 +75,60 @@ app.get('/api/players', async (req, res) => {
 // Get players by position
 app.get('/api/players/:position', async (req, res) => {
   const position = req.params.position;
-  if (!['defender', 'attacker', 'any'].includes(position)) {
-    return res.status(400).json({ error: 'Invalid position. Must be defender, attacker, or any' });
+  if (!['defender', 'attacker'].includes(position)) {
+    return res.status(400).json({ error: 'Invalid position. Must be defender or attacker' });
   }
   
   try {
     const { db } = await connectToDatabase();
-    const query = position === 'any' 
-      ? {} 
-      : { $or: [{ position }, { position: 'any' }] };
     
+    // Get all players with their ratings
     const players = await db.collection('players')
-      .find(query)
+      .find({})
+      .project({
+        name: 1,
+        rating: position === 'defender' ? '$defender_rating' : '$attacker_rating',
+        rating_deviation: position === 'defender' ? '$defender_deviation' : '$attacker_deviation'
+      })
       .sort({ rating: -1 })
       .toArray();
+
+    // Get match counts for each player
+    const matchCounts = await db.collection('matches')
+      .aggregate([
+        {
+          $project: {
+            players: position === 'defender' ? 
+              ['$team1.defender', '$team2.defender'] : 
+              ['$team1.attacker', '$team2.attacker']
+          }
+        },
+        {
+          $unwind: '$players'
+        },
+        {
+          $group: {
+            _id: '$players',
+            count: { $sum: 1 }
+          }
+        }
+      ])
+      .toArray();
+
+    // Create a map of player names to match counts
+    const matchCountMap = {};
+    matchCounts.forEach(({ _id, count }) => {
+      matchCountMap[_id] = count;
+    });
+
+    // Add match counts to players
+    const playersWithCounts = players.map(player => ({
+      ...player,
+      matches_played: matchCountMap[player.name] || 0
+    }));
     
     await closeConnection();
-    res.json(players || []);
+    res.json(playersWithCounts || []);
   } catch (error) {
     console.error('Error fetching players by position:', error);
     await closeConnection();
@@ -93,14 +138,10 @@ app.get('/api/players/:position', async (req, res) => {
 
 // Add a new player
 app.post('/api/players', async (req, res) => {
-  const { name, position = 'any' } = req.body;
+  const { name } = req.body;
   
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Player name is required' });
-  }
-  
-  if (!['defender', 'attacker', 'any'].includes(position)) {
-    return res.status(400).json({ error: 'Invalid position. Must be defender, attacker, or any' });
   }
   
   try {
@@ -108,16 +149,19 @@ app.post('/api/players', async (req, res) => {
     
     // Check if player already exists
     const existingPlayer = await db.collection('players').findOne({ name: name.trim() });
+    
     if (existingPlayer) {
       await closeConnection();
       return res.status(400).json({ error: 'A player with this name already exists' });
     }
     
+    // Create player with both ratings
     const player = {
       name: name.trim(),
-      position,
-      rating: DEFAULT_RATING,
-      rating_deviation: DEFAULT_DEVIATION
+      defender_rating: DEFAULT_RATING,
+      defender_deviation: DEFAULT_DEVIATION,
+      attacker_rating: DEFAULT_RATING,
+      attacker_deviation: DEFAULT_DEVIATION
     };
     
     await db.collection('players').insertOne(player);
@@ -138,8 +182,10 @@ app.post('/api/players/reset-ratings', async (req, res) => {
       {},
       { 
         $set: { 
-          rating: DEFAULT_RATING,
-          rating_deviation: DEFAULT_DEVIATION
+          defender_rating: DEFAULT_RATING,
+          defender_deviation: DEFAULT_DEVIATION,
+          attacker_rating: DEFAULT_RATING,
+          attacker_deviation: DEFAULT_DEVIATION
         }
       }
     );
@@ -195,37 +241,51 @@ app.post('/api/match', async (req, res) => {
     // Create rating objects for TrueSkill
     const ratings = {};
     players.forEach(player => {
-      ratings[player.name] = new Rating(player.rating || DEFAULT_RATING, player.rating_deviation || DEFAULT_DEVIATION);
+      // Use defender rating for defender position
+      ratings[`${player.name}_defender`] = new Rating(
+        player.defender_rating || DEFAULT_RATING, 
+        player.defender_deviation || DEFAULT_DEVIATION
+      );
+      // Use attacker rating for attacker position
+      ratings[`${player.name}_attacker`] = new Rating(
+        player.attacker_rating || DEFAULT_RATING, 
+        player.attacker_deviation || DEFAULT_DEVIATION
+      );
     });
 
-    // Create teams
+    // Create teams with role-specific ratings
     const team1Ratings = [
-      ratings[team1.defender] || new Rating(DEFAULT_RATING, DEFAULT_DEVIATION),
-      ratings[team1.attacker] || new Rating(DEFAULT_RATING, DEFAULT_DEVIATION)
+      ratings[`${team1.defender}_defender`] || new Rating(DEFAULT_RATING, DEFAULT_DEVIATION),
+      ratings[`${team1.attacker}_attacker`] || new Rating(DEFAULT_RATING, DEFAULT_DEVIATION)
     ];
     
     const team2Ratings = [
-      ratings[team2.defender] || new Rating(DEFAULT_RATING, DEFAULT_DEVIATION),
-      ratings[team2.attacker] || new Rating(DEFAULT_RATING, DEFAULT_DEVIATION)
+      ratings[`${team2.defender}_defender`] || new Rating(DEFAULT_RATING, DEFAULT_DEVIATION),
+      ratings[`${team2.attacker}_attacker`] || new Rating(DEFAULT_RATING, DEFAULT_DEVIATION)
     ];
 
     // Calculate new ratings
     const ranks = winner === 1 ? [0, 1] : [1, 0];
     const [newTeam1Ratings, newTeam2Ratings] = ts.rate([team1Ratings, team2Ratings], ranks);
 
-    // Update ratings in database
+    // Update ratings in database with role-specific updates
     const updates = [
-      [team1.defender, newTeam1Ratings[0].mu, newTeam1Ratings[0].sigma],
-      [team1.attacker, newTeam1Ratings[1].mu, newTeam1Ratings[1].sigma],
-      [team2.defender, newTeam2Ratings[0].mu, newTeam2Ratings[0].sigma],
-      [team2.attacker, newTeam2Ratings[1].mu, newTeam2Ratings[1].sigma]
+      [team1.defender, 'defender', newTeam1Ratings[0].mu, newTeam1Ratings[0].sigma],
+      [team1.attacker, 'attacker', newTeam1Ratings[1].mu, newTeam1Ratings[1].sigma],
+      [team2.defender, 'defender', newTeam2Ratings[0].mu, newTeam2Ratings[0].sigma],
+      [team2.attacker, 'attacker', newTeam2Ratings[1].mu, newTeam2Ratings[1].sigma]
     ];
 
-    for (const [name, rating, deviation] of updates) {
+    for (const [name, role, rating, deviation] of updates) {
+      const fieldPrefix = role === 'defender' ? 'defender' : 'attacker';
       await db.collection('players').updateOne(
         { name },
-        { $set: { rating, rating_deviation: deviation } },
-        { upsert: true }
+        { 
+          $set: { 
+            [`${fieldPrefix}_rating`]: rating,
+            [`${fieldPrefix}_deviation`]: deviation
+          }
+        }
       );
     }
 
@@ -245,8 +305,8 @@ app.post('/api/match', async (req, res) => {
       },
       winner,
       timestamp: new Date(),
-      team1_win_probability: ts.expect(team1Ratings, team2Ratings),
-      team2_win_probability: ts.expect(team2Ratings, team1Ratings)
+      team1_win_probability: calculateWinProbability(team1Ratings, team2Ratings),
+      team2_win_probability: calculateWinProbability(team2Ratings, team1Ratings)
     };
 
     await db.collection('matches').insertOne(match);
@@ -275,4 +335,44 @@ app.post('/api/match', async (req, res) => {
 // Start the server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
-}); 
+});
+
+// Add this function at the top of the file, after the imports
+function calculateWinProbability(team1Ratings, team2Ratings) {
+  // Calculate team strengths (sum of ratings)
+  const team1Strength = team1Ratings.reduce((sum, rating) => sum + rating.mu, 0);
+  const team2Strength = team2Ratings.reduce((sum, rating) => sum + rating.mu, 0);
+  
+  // Calculate combined standard deviation
+  const team1Deviation = Math.sqrt(team1Ratings.reduce((sum, rating) => sum + Math.pow(rating.sigma, 2), 0));
+  const team2Deviation = Math.sqrt(team2Ratings.reduce((sum, rating) => sum + Math.pow(rating.sigma, 2), 0));
+  const combinedDeviation = Math.sqrt(Math.pow(team1Deviation, 2) + Math.pow(team2Deviation, 2));
+  
+  // Calculate win probability using normal distribution
+  const diff = team1Strength - team2Strength;
+  const z = diff / combinedDeviation;
+  return 0.5 * (1 + Math.erf(z / Math.sqrt(2)));
+}
+
+// Add this helper function for the error function
+function erf(x) {
+  // Approximation of the error function
+  const a1 =  0.254829592;
+  const a2 = -0.284496736;
+  const a3 =  1.421413741;
+  const a4 = -1.453152027;
+  const a5 =  1.061405429;
+  const p  =  0.3275911;
+
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+
+  const t = 1.0/(1.0 + p*x);
+  const y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.exp(-x*x);
+  return sign * y;
+}
+
+// Add Math.erf if it doesn't exist
+if (!Math.erf) {
+  Math.erf = erf;
+} 

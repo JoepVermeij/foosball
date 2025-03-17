@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Foosball Rating System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Login to Players Section</h1>
+        
+        <!-- Navigation Menu -->
+        <nav class="bg-white shadow-md rounded-lg p-4 mb-8">
+            <ul class="flex space-x-4">
+                <li><a href="/" class="text-gray-600 hover:text-gray-900">Home</a></li>
+                <li><a href="/match" class="text-gray-600 hover:text-gray-900">Record Match</a></li>
+                <li><a href="/users" class="text-blue-600 font-semibold">Players</a></li>
+                <li><a href="/history" class="text-gray-600 hover:text-gray-900">History</a></li>
+            </ul>
+        </nav>
+
+        <!-- Login Form -->
+        <div class="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" name="password" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <button type="submit" 
+                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            window.location.href = `/users?password=${encodeURIComponent(password)}`;
+        });
+    </script>
+</body>
+</html> 
