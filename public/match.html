@@ -7,59 +7,61 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-8">Record Match</h1>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-4 sm:py-8">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-8">Record Match</h1>
         
         <!-- Navigation Menu -->
-        <nav class="bg-white shadow-md rounded-lg p-4 mb-8">
-            <ul class="flex space-x-4">
-                <li><a href="/" class="text-gray-600 hover:text-gray-900">Home</a></li>
-                <li><a href="/match" class="text-blue-600 font-semibold">Record Match</a></li>
-                <li><a href="/users" class="text-gray-600 hover:text-gray-900">Players</a></li>
-                <li><a href="/history" class="text-gray-600 hover:text-gray-900">History</a></li>
+        <nav class="bg-white shadow-md rounded-lg p-2 sm:p-4 mb-4 sm:mb-8">
+            <ul class="flex flex-wrap gap-2 sm:gap-4 text-sm sm:text-base">
+                <li><a href="/" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Home</a></li>
+                <li><a href="/match" class="text-blue-600 font-semibold px-2 py-1 rounded bg-blue-50">Record Match</a></li>
+                <li><a href="/users" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Players</a></li>
+                <li><a href="/history?password=fdsfrew4234erasdf" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">History</a></li>
             </ul>
         </nav>
 
         <!-- Match Form -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <form id="matchForm" class="space-y-6">
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+            <form id="matchForm" class="space-y-4 sm:space-y-6">
                 <!-- Team 1 -->
-                <div class="space-y-4">
-                    <h2 class="text-xl font-semibold text-gray-800">Team 1</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-3 sm:space-y-4">
+                    <h2 class="text-lg sm:text-xl font-semibold text-gray-800">Team 1</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label for="team1Defender" class="block text-sm font-medium text-gray-700">Defender</label>
+                            <label for="team1Defender" class="block text-sm font-medium text-gray-700 mb-1">Defender</label>
                             <select id="team1Defender" name="team1Defender" required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-white px-3 py-2 text-sm sm:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                 <option value="">Select Defender</option>
                             </select>
                         </div>
                         <div>
-                            <label for="team1Attacker" class="block text-sm font-medium text-gray-700">Attacker</label>
+                            <label for="team1Attacker" class="block text-sm font-medium text-gray-700 mb-1">Attacker</label>
                             <select id="team1Attacker" name="team1Attacker" required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-white px-3 py-2 text-sm sm:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                 <option value="">Select Attacker</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
+                <div class="flex items-center justify-center text-2xl font-bold text-gray-500 mx-4">VS</div>
+
                 <!-- Team 2 -->
-                <div class="space-y-4">
-                    <h2 class="text-xl font-semibold text-gray-800">Team 2</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-3 sm:space-y-4">
+                    <h2 class="text-lg sm:text-xl font-semibold text-gray-800">Team 2</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label for="team2Defender" class="block text-sm font-medium text-gray-700">Defender</label>
+                            <label for="team2Defender" class="block text-sm font-medium text-gray-700 mb-1">Defender</label>
                             <select id="team2Defender" name="team2Defender" required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-white px-3 py-2 text-sm sm:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                 <option value="">Select Defender</option>
                             </select>
                         </div>
                         <div>
-                            <label for="team2Attacker" class="block text-sm font-medium text-gray-700">Attacker</label>
+                            <label for="team2Attacker" class="block text-sm font-medium text-gray-700 mb-1">Attacker</label>
                             <select id="team2Attacker" name="team2Attacker" required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-white px-3 py-2 text-sm sm:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                 <option value="">Select Attacker</option>
                             </select>
                         </div>
@@ -72,19 +74,19 @@
                     <div class="flex space-x-4">
                         <label class="inline-flex items-center">
                             <input type="radio" name="winner" value="1" required
-                                   class="form-radio text-blue-600">
-                            <span class="ml-2">Team 1</span>
+                                   class="form-radio text-blue-600 h-4 w-4">
+                            <span class="ml-2 text-sm sm:text-base">Team 1</span>
                         </label>
                         <label class="inline-flex items-center">
                             <input type="radio" name="winner" value="2" required
-                                   class="form-radio text-blue-600">
-                            <span class="ml-2">Team 2</span>
+                                   class="form-radio text-blue-600 h-4 w-4">
+                            <span class="ml-2 text-sm sm:text-base">Team 2</span>
                         </label>
                     </div>
                 </div>
 
                 <button type="submit" 
-                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        class="w-full bg-blue-600 text-white px-4 py-2 sm:py-3 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm sm:text-base font-medium transition-colors">
                     Record Match
                 </button>
             </form>
@@ -92,8 +94,8 @@
     </div>
 
     <script>
-        // Fetch and populate player lists
-        async function fetchPlayers() {
+        // Populate player lists
+        async function populatePlayerLists() {
             try {
                 const [defendersResponse, attackersResponse] = await Promise.all([
                     fetch('/api/players/defender'),
@@ -111,7 +113,7 @@
                 const defenderOptions = defenders.map(player => 
                     `<option value="${player.name}">${player.name} (${player.rating.toFixed(2)})</option>`
                 ).join('');
-                
+
                 document.getElementById('team1Defender').innerHTML += defenderOptions;
                 document.getElementById('team2Defender').innerHTML += defenderOptions;
 
@@ -145,6 +147,21 @@
                 winner: parseInt(formData.get('winner'))
             };
 
+            // Get all selected players
+            const selectedPlayers = [
+                matchData.team1.defender,
+                matchData.team1.attacker,
+                matchData.team2.defender,
+                matchData.team2.attacker
+            ];
+
+            // Check for duplicates
+            const uniquePlayers = new Set(selectedPlayers);
+            if (uniquePlayers.size !== selectedPlayers.length) {
+                alert('A player can only be selected once across all positions');
+                return;
+            }
+
             try {
                 const response = await fetch('/api/match', {
                     method: 'POST',
@@ -168,8 +185,40 @@
             }
         });
 
+        // Add validation when selecting players
+        function validateTeamSelection(teamNumber) {
+            const defender = document.getElementById(`team${teamNumber}Defender`).value;
+            const attacker = document.getElementById(`team${teamNumber}Attacker`).value;
+            
+            // Get all selected players
+            const allPlayers = [
+                document.getElementById('team1Defender').value,
+                document.getElementById('team1Attacker').value,
+                document.getElementById('team2Defender').value,
+                document.getElementById('team2Attacker').value
+            ];
+
+            // Check for duplicates
+            const uniquePlayers = new Set(allPlayers.filter(p => p !== ''));
+            if (uniquePlayers.size !== allPlayers.filter(p => p !== '').length) {
+                alert('A player can only be selected once across all positions');
+                // Reset the current selection
+                if (teamNumber === 1) {
+                    document.getElementById(`team${teamNumber}${defender === attacker ? 'Attacker' : 'Defender'}`).value = '';
+                } else {
+                    document.getElementById(`team${teamNumber}${defender === attacker ? 'Attacker' : 'Defender'}`).value = '';
+                }
+            }
+        }
+
+        // Add event listeners for player selection
+        document.getElementById('team1Defender').addEventListener('change', () => validateTeamSelection(1));
+        document.getElementById('team1Attacker').addEventListener('change', () => validateTeamSelection(1));
+        document.getElementById('team2Defender').addEventListener('change', () => validateTeamSelection(2));
+        document.getElementById('team2Attacker').addEventListener('change', () => validateTeamSelection(2));
+
         // Initial load
-        fetchPlayers();
+        populatePlayerLists();
     </script>
 </body>
 </html> 

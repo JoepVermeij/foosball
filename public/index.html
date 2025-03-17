@@ -7,44 +7,31 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-8">Foosball Rating System</h1>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-4 sm:py-8">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-8">Foosball Leaderboard</h1>
         
         <!-- Navigation Menu -->
-        <nav class="bg-white shadow-md rounded-lg p-4 mb-8">
-            <ul class="flex space-x-4">
-                <li><a href="/" class="text-blue-600 font-semibold">Home</a></li>
-                <li><a href="/match" class="text-gray-600 hover:text-gray-900">Record Match</a></li>
-                <li><a href="/users" class="text-gray-600 hover:text-gray-900">Players</a></li>
-                <li><a href="/history" class="text-gray-600 hover:text-gray-900">History</a></li>
+        <nav class="bg-white shadow-md rounded-lg p-2 sm:p-4 mb-4 sm:mb-8">
+            <ul class="flex flex-wrap gap-2 sm:gap-4 text-sm sm:text-base">
+                <li><a href="/" class="text-blue-600 font-semibold px-2 py-1 rounded bg-blue-50">Home</a></li>
+                <li><a href="/match" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Record Match</a></li>
+                <li><a href="/users" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Players</a></li>
+                <li><a href="/history?password=fdsfrew4234erasdf" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">History</a></li>
             </ul>
         </nav>
 
-        <!-- Leaderboards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Defenders Leaderboard -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">Defender Rankings</h2>
-                <div id="defendersList" class="space-y-2">
-                    <!-- Defenders will be listed here -->
-                </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+            <!-- Defender Rankings -->
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4">Defender Rankings</h2>
+                <div id="defenderList" class="space-y-2 sm:space-y-3"></div>
             </div>
 
-            <!-- Attackers Leaderboard -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">Attacker Rankings</h2>
-                <div id="attackersList" class="space-y-2">
-                    <!-- Attackers will be listed here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Matches -->
-        <div class="mt-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Matches</h2>
-            <div id="recentMatches" class="space-y-4">
-                <!-- Recent matches will be listed here -->
+            <!-- Attacker Rankings -->
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4">Attacker Rankings</h2>
+                <div id="attackerList" class="space-y-2 sm:space-y-3"></div>
             </div>
         </div>
     </div>
@@ -65,8 +52,8 @@
                 const defenders = await defendersResponse.json();
                 const attackers = await attackersResponse.json();
 
-                displayPlayers(defenders, 'defendersList');
-                displayPlayers(attackers, 'attackersList');
+                displayPlayers(defenders, 'defenderList');
+                displayPlayers(attackers, 'attackerList');
             } catch (error) {
                 console.error('Error fetching players:', error);
                 alert('Failed to fetch players');
@@ -81,61 +68,14 @@
             const sortedPlayers = [...players].sort((a, b) => b.rating - a.rating);
             
             list.innerHTML = sortedPlayers.map((player, index) => `
-                <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <div class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full font-semibold mr-3">
+                <div class="flex items-center p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <div class="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full font-semibold text-sm sm:text-base mr-2 sm:mr-3">
                         ${index + 1}
                     </div>
                     <div class="flex-1">
-                        <div class="font-medium text-gray-800">${player.name}</div>
-                        <div class="text-sm text-gray-600">
+                        <div class="font-medium text-gray-800 text-sm sm:text-base">${player.name}</div>
+                        <div class="text-xs sm:text-sm text-gray-600">
                             Rating: ${player.rating.toFixed(2)} ± ${player.rating_deviation.toFixed(2)}
-                            <span class="ml-2">•</span>
-                            <span>${player.matches_played} matches</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Fetch and display recent matches
-        async function fetchRecentMatches() {
-            try {
-                const response = await fetch('/api/matches');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch matches');
-                }
-
-                const matches = await response.json();
-                displayMatches(matches);
-            } catch (error) {
-                console.error('Error fetching matches:', error);
-                alert('Failed to fetch matches');
-            }
-        }
-
-        // Display recent matches
-        function displayMatches(matches) {
-            const container = document.getElementById('recentMatches');
-            container.innerHTML = matches.map(match => `
-                <div class="bg-white rounded-lg shadow-md p-4">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="text-sm text-gray-600">
-                            ${new Date(match.timestamp).toLocaleString()}
-                        </div>
-                        <div class="font-medium ${match.winner === 1 ? 'text-green-600' : 'text-red-600'}">
-                            ${match.winner === 1 ? 'Team 1 Won' : 'Team 2 Won'}
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-gray-50 p-3 rounded-md">
-                            <div class="font-medium text-gray-800">Team 1</div>
-                            <div class="text-sm text-gray-600">Defender: ${match.team1.defender} (${match.team1.defender_rating.toFixed(2)})</div>
-                            <div class="text-sm text-gray-600">Attacker: ${match.team1.attacker} (${match.team1.attacker_rating.toFixed(2)})</div>
-                        </div>
-                        <div class="bg-gray-50 p-3 rounded-md">
-                            <div class="font-medium text-gray-800">Team 2</div>
-                            <div class="text-sm text-gray-600">Defender: ${match.team2.defender} (${match.team2.defender_rating.toFixed(2)})</div>
-                            <div class="text-sm text-gray-600">Attacker: ${match.team2.attacker} (${match.team2.attacker_rating.toFixed(2)})</div>
                         </div>
                     </div>
                 </div>
@@ -144,7 +84,6 @@
 
         // Initial load
         fetchPlayers();
-        fetchRecentMatches();
     </script>
 </body>
 </html> 

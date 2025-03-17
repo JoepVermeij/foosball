@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { connectToDatabase, closeConnection } from './utils/mongodb.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { ObjectId } from 'mongodb';
 
 // Load environment variables
 dotenv.config();
@@ -55,7 +56,12 @@ app.get('/users', (req, res) => {
 });
 
 app.get('/history', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'history.html'));
+  const password = req.query.password;
+  if (password === ADMIN_PASSWORD) {
+    res.sendFile(path.join(__dirname, 'public', 'history.html'));
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  }
 });
 
 // API endpoints
@@ -268,6 +274,17 @@ app.post('/api/match', async (req, res) => {
     const ranks = winner === 1 ? [0, 1] : [1, 0];
     const [newTeam1Ratings, newTeam2Ratings] = ts.rate([team1Ratings, team2Ratings], ranks);
 
+    // Store previous ratings for each player
+    const previousRatings = {};
+    players.forEach(player => {
+      previousRatings[player.name] = {
+        defender_rating: player.defender_rating || DEFAULT_RATING,
+        defender_deviation: player.defender_deviation || DEFAULT_DEVIATION,
+        attacker_rating: player.attacker_rating || DEFAULT_RATING,
+        attacker_deviation: player.attacker_deviation || DEFAULT_DEVIATION
+      };
+    });
+
     // Update ratings in database with role-specific updates
     const updates = [
       [team1.defender, 'defender', newTeam1Ratings[0].mu, newTeam1Ratings[0].sigma],
@@ -289,19 +306,27 @@ app.post('/api/match', async (req, res) => {
       );
     }
 
-    // Record the match with enhanced details
+    // Record the match with enhanced details including previous ratings
     const match = {
       team1: {
         defender: team1.defender,
         attacker: team1.attacker,
         defender_rating: newTeam1Ratings[0].mu,
-        attacker_rating: newTeam1Ratings[1].mu
+        attacker_rating: newTeam1Ratings[1].mu,
+        defender_prev_rating: previousRatings[team1.defender].defender_rating,
+        defender_prev_deviation: previousRatings[team1.defender].defender_deviation,
+        attacker_prev_rating: previousRatings[team1.attacker].attacker_rating,
+        attacker_prev_deviation: previousRatings[team1.attacker].attacker_deviation
       },
       team2: {
         defender: team2.defender,
         attacker: team2.attacker,
         defender_rating: newTeam2Ratings[0].mu,
-        attacker_rating: newTeam2Ratings[1].mu
+        attacker_rating: newTeam2Ratings[1].mu,
+        defender_prev_rating: previousRatings[team2.defender].defender_rating,
+        defender_prev_deviation: previousRatings[team2.defender].defender_deviation,
+        attacker_prev_rating: previousRatings[team2.attacker].attacker_rating,
+        attacker_prev_deviation: previousRatings[team2.attacker].attacker_deviation
       },
       winner,
       timestamp: new Date(),
@@ -330,6 +355,77 @@ app.post('/api/match', async (req, res) => {
     await closeConnection();
     res.status(500).json({ error: 'Failed to process match' });
   }
+});
+
+// Update the revert endpoint to only allow reverting the most recent match
+app.post('/api/matches/revert-latest', async (req, res) => {
+    try {
+        const { db } = await connectToDatabase();
+        
+        // Get the most recent match
+        const match = await db.collection('matches')
+            .findOne({}, { sort: { timestamp: -1 } });
+            
+        if (!match) {
+            return res.status(404).json({ error: 'No matches found to revert' });
+        }
+
+        // Update each player's ratings individually
+        const updates = [
+            // Team 1 players
+            {
+                name: match.team1.defender,
+                defender_rating: match.team1.defender_prev_rating,
+                defender_deviation: match.team1.defender_prev_deviation
+            },
+            {
+                name: match.team1.attacker,
+                attacker_rating: match.team1.attacker_prev_rating,
+                attacker_deviation: match.team1.attacker_prev_deviation
+            },
+            // Team 2 players
+            {
+                name: match.team2.defender,
+                defender_rating: match.team2.defender_prev_rating,
+                defender_deviation: match.team2.defender_prev_deviation
+            },
+            {
+                name: match.team2.attacker,
+                attacker_rating: match.team2.attacker_prev_rating,
+                attacker_deviation: match.team2.attacker_prev_deviation
+            }
+        ];
+
+        // Update each player's ratings
+        for (const update of updates) {
+            const { name, defender_rating, defender_deviation, attacker_rating, attacker_deviation } = update;
+            const updateFields = {};
+            
+            if (defender_rating !== undefined) {
+                updateFields.defender_rating = defender_rating;
+                updateFields.defender_deviation = defender_deviation;
+            }
+            if (attacker_rating !== undefined) {
+                updateFields.attacker_rating = attacker_rating;
+                updateFields.attacker_deviation = attacker_deviation;
+            }
+
+            await db.collection('players').updateOne(
+                { name },
+                { $set: updateFields }
+            );
+        }
+
+        // Delete the match
+        await db.collection('matches').deleteOne({ _id: match._id });
+
+        await closeConnection();
+        res.json({ message: 'Latest match reverted successfully' });
+    } catch (error) {
+        console.error('Error reverting match:', error);
+        await closeConnection();
+        res.status(500).json({ error: 'Failed to revert match' });
+    }
 });
 
 // Start the server

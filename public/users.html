@@ -7,50 +7,49 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-8">Players</h1>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-4 sm:py-8">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-8">Players</h1>
         
         <!-- Navigation Menu -->
-        <nav class="bg-white shadow-md rounded-lg p-4 mb-8">
-            <ul class="flex space-x-4">
-                <li><a href="/" class="text-gray-600 hover:text-gray-900">Home</a></li>
-                <li><a href="/match" class="text-gray-600 hover:text-gray-900">Record Match</a></li>
-                <li><a href="/users" class="text-blue-600 font-semibold">Players</a></li>
-                <li><a href="/history" class="text-gray-600 hover:text-gray-900">History</a></li>
+        <nav class="bg-white shadow-md rounded-lg p-2 sm:p-4 mb-4 sm:mb-8">
+            <ul class="flex flex-wrap gap-2 sm:gap-4 text-sm sm:text-base">
+                <li><a href="/" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Home</a></li>
+                <li><a href="/match" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Record Match</a></li>
+                <li><a href="/users" class="text-blue-600 font-semibold px-2 py-1 rounded bg-blue-50">Players</a></li>
+                <li><a href="/history?password=fdsfrew4234erasdf" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">History</a></li>
             </ul>
         </nav>
 
         <!-- Add Player Form -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">Add New Player</h2>
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-8">
+            <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Add New Player</h2>
             <form id="addPlayerForm" class="space-y-4">
                 <div>
-                    <label for="playerName" class="block text-sm font-medium text-gray-700">Player Name</label>
-                    <input type="text" id="playerName" name="name" required
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Player Name</label>
+                    <input type="text" id="name" name="name" required
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm sm:text-base p-2">
                 </div>
                 <button type="submit" 
-                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        class="w-full bg-blue-600 text-white px-4 py-2 sm:py-3 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm sm:text-base font-medium transition-colors">
                     Add Player
                 </button>
             </form>
         </div>
 
-        <!-- Player List -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">All Players</h2>
-            <div id="playersList" class="space-y-4">
-                <!-- Players will be listed here -->
+        <!-- Player Lists -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+            <!-- Defenders -->
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Defenders</h2>
+                <div id="defenderList" class="space-y-2 sm:space-y-3"></div>
             </div>
-        </div>
 
-        <!-- Reset Ratings Button -->
-        <div class="mt-8">
-            <button id="resetRatings" 
-                    class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
-                Reset All Ratings
-            </button>
+            <!-- Attackers -->
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Attackers</h2>
+                <div id="attackerList" class="space-y-2 sm:space-y-3"></div>
+            </div>
         </div>
     </div>
 
@@ -70,69 +69,55 @@
                 const defenders = await defendersResponse.json();
                 const attackers = await attackersResponse.json();
 
-                // Combine players and their ratings
-                const players = {};
-                defenders.forEach(player => {
-                    players[player.name] = {
-                        name: player.name,
-                        defender_rating: player.rating,
-                        defender_deviation: player.rating_deviation
-                    };
-                });
-                attackers.forEach(player => {
-                    if (players[player.name]) {
-                        players[player.name].attacker_rating = player.rating;
-                        players[player.name].attacker_deviation = player.rating_deviation;
-                    } else {
-                        players[player.name] = {
-                            name: player.name,
-                            attacker_rating: player.rating,
-                            attacker_deviation: player.rating_deviation
-                        };
-                    }
-                });
-
-                displayPlayers(Object.values(players));
+                displayPlayers(defenders, 'defenderList');
+                displayPlayers(attackers, 'attackerList');
             } catch (error) {
                 console.error('Error fetching players:', error);
                 alert('Failed to fetch players');
             }
         }
 
-        // Display players with both ratings
-        function displayPlayers(players) {
-            const list = document.getElementById('playersList');
-            list.innerHTML = players.map(player => `
-                <div class="bg-gray-50 rounded-lg p-4">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="font-medium text-gray-800 text-lg">${player.name}</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-white p-3 rounded-md shadow-sm">
-                            <div class="text-sm text-gray-600 mb-1">Defender Rating</div>
-                            <div class="text-lg font-semibold text-gray-800">${(player.defender_rating || 0).toFixed(2)}</div>
+        // Display players in the specified list
+        function displayPlayers(players, listId) {
+            const list = document.getElementById(listId);
+            
+            // Sort players by name
+            const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+            
+            list.innerHTML = sortedPlayers.map(player => `
+                <div class="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <div class="font-medium text-gray-800 text-sm sm:text-base">${player.name}</div>
+                        <div class="text-xs sm:text-sm text-gray-600">
+                            Rating: ${player.rating.toFixed(2)} ± ${player.rating_deviation.toFixed(2)}
+                            <span class="mx-1">•</span>
+                            <span>${player.matches_played} matches</span>
                         </div>
-                        <div class="bg-white p-3 rounded-md shadow-sm">
-                            <div class="text-sm text-gray-600 mb-1">Attacker Rating</div>
-                            <div class="text-lg font-semibold text-gray-800">${(player.attacker_rating || 0).toFixed(2)}</div>
-                        </div>
                     </div>
+                    <button onclick="resetRating('${player.name}')"
+                            class="text-red-600 hover:text-red-700 text-sm sm:text-base font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors">
+                        Reset Rating
+                    </button>
                 </div>
             `).join('');
         }
 
-        // Add new player
+        // Handle form submission
         document.getElementById('addPlayerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const name = document.getElementById('playerName').value.trim();
             
+            const formData = new FormData(e.target);
+            const playerData = {
+                name: formData.get('name')
+            };
+
             try {
                 const response = await fetch('/api/players', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ name })
+                    body: JSON.stringify(playerData)
                 });
 
                 if (!response.ok) {
@@ -140,7 +125,8 @@
                     throw new Error(error.error || 'Failed to add player');
                 }
 
-                document.getElementById('playerName').value = '';
+                // Reset form and refresh player lists
+                e.target.reset();
                 fetchPlayers();
             } catch (error) {
                 console.error('Error adding player:', error);
@@ -148,27 +134,28 @@
             }
         });
 
-        // Reset ratings
-        document.getElementById('resetRatings').addEventListener('click', async () => {
-            if (!confirm('Are you sure you want to reset all player ratings? This cannot be undone.')) {
+        // Reset player rating
+        async function resetRating(name) {
+            if (!confirm(`Are you sure you want to reset ${name}'s rating?`)) {
                 return;
             }
 
             try {
-                const response = await fetch('/api/players/reset-ratings', {
+                const response = await fetch(`/api/players/${name}/reset`, {
                     method: 'POST'
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to reset ratings');
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to reset rating');
                 }
 
                 fetchPlayers();
             } catch (error) {
-                console.error('Error resetting ratings:', error);
-                alert('Failed to reset ratings');
+                console.error('Error resetting rating:', error);
+                alert(error.message);
             }
-        });
+        }
 
         // Initial load
         fetchPlayers();
