@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Foosball Leaderboard</title>
-    <link href="/css/output.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
@@ -52,27 +52,10 @@
             try {
                 const url = positionFilter === 'all' ? '/api/players' : `/api/players/${positionFilter}`;
                 const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                const players = Array.isArray(data) ? data : [];
+                const players = await response.json();
                 
                 const leaderboard = document.getElementById('leaderboard');
                 leaderboard.innerHTML = '';
-                
-                if (players.length === 0) {
-                    leaderboard.innerHTML = `
-                        <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                No players found
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
                 
                 players.forEach((player, index) => {
                     const row = document.createElement('tr');
@@ -91,14 +74,6 @@
                 });
             } catch (error) {
                 console.error('Error loading leaderboard:', error);
-                const leaderboard = document.getElementById('leaderboard');
-                leaderboard.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-red-500">
-                            Error loading leaderboard. Please try again later.
-                        </td>
-                    </tr>
-                `;
             }
         }
 

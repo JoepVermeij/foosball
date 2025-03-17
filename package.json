@@ -5,11 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "build": "npm run build:css",
+    "build": "npm install",
     "dev": "netlify dev",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build:css": "node ./node_modules/tailwindcss/lib/cli.js -i ./public/css/styles.css -o ./public/css/output.css --minify",
-    "watch:css": "node ./node_modules/tailwindcss/lib/cli.js -i ./public/css/styles.css -o ./public/css/output.css --watch"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
@@ -19,8 +17,6 @@
     "axios": "^1.8.3",
     "dotenv": "^16.4.7",
     "express": "^4.18.2",
-    "mongodb": "^6.14.2",
-    "mongoose": "^8.12.1",
     "serverless-http": "^3.2.0",
     "sqlite3": "^5.1.6",
     "ts-trueskill": "^1.0.0"
@@ -33,10 +29,5 @@
     "onlyBuiltDependencies": [
       "sqlite3"
     ]
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.3",
-    "tailwindcss": "^4.0.14"
   }
 }
