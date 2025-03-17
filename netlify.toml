@@ -4,7 +4,11 @@
   publish = "public"
 
 [dev]
-  port = 3000
+  command = "npm run start"
+  port = 8888
+  targetPort = 3000
+  framework = "#custom"
+  autoLaunch = true
 
 [[redirects]]
   from = "/api/*"
