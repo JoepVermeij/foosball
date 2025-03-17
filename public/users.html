@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Foosball Players</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="/css/output.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
@@ -79,10 +79,21 @@
                 }
 
                 const response = await fetch(url);
-                const players = await response.json();
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                // Ensure we have an array of players
+                const players = Array.isArray(data) ? data : [];
                 
                 const playersList = document.getElementById('playersList');
                 playersList.innerHTML = '';
+                
+                if (players.length === 0) {
+                    playersList.innerHTML = '<li class="py-3 text-gray-500">No players found</li>';
+                    return;
+                }
                 
                 players.forEach(player => {
                     const item = document.createElement('li');
@@ -102,6 +113,8 @@
                 });
             } catch (error) {
                 console.error('Error loading players:', error);
+                const playersList = document.getElementById('playersList');
+                playersList.innerHTML = '<li class="py-3 text-red-500">Error loading players. Please try again later.</li>';
             }
         }
 
@@ -140,15 +153,15 @@
                     })
                 });
                 
-                if (response.ok) {
-                    document.getElementById('playerName').value = '';
-                    document.getElementById('playerPosition').value = 'any';
-                    loadPlayers(document.getElementById('positionFilter').value);
-                    alert('Player added successfully!');
-                } else {
+                if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'Failed to add player');
                 }
+                
+                document.getElementById('playerName').value = '';
+                document.getElementById('playerPosition').value = 'any';
+                loadPlayers(document.getElementById('positionFilter').value);
+                alert('Player added successfully!');
             } catch (error) {
                 console.error('Error:', error);
                 alert(error.message || 'Error adding player. Please try again.');
@@ -172,13 +185,13 @@
                     }
                 });
                 
-                if (response.ok) {
-                    loadPlayers(document.getElementById('positionFilter').value);
-                    alert('All player ratings have been reset to default values.');
-                } else {
+                if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'Failed to reset ratings');
                 }
+                
+                loadPlayers(document.getElementById('positionFilter').value);
+                alert('All player ratings have been reset to default values.');
             } catch (error) {
                 console.error('Error:', error);
                 alert(error.message || 'Error resetting ratings. Please try again.');

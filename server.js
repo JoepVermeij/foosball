@@ -1,10 +1,9 @@
 import express from 'express';
-import sqlite3 from 'sqlite3';
+import mongoose from 'mongoose';
 import { Rating, TrueSkill } from 'ts-trueskill';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
-import fs from 'fs';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -15,10 +14,10 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
-const dbPath = process.env.DB_PATH || 'foosball.db';
 const isNetlify = process.env.IS_NETLIFY === 'true';
 const useNetlifyApi = process.env.USE_NETLIFY_API === 'true';
 const netlifyUrl = process.env.NETLIFY_SITE_URL || '';
+const mongoUri = isNetlify ? process.env.MONGODB_URI_PRODUCTION : process.env.MONGODB_URI;
 
 // Initialize TrueSkill
 const ts = new TrueSkill();
@@ -30,6 +29,31 @@ const DEFAULT_DEVIATION = 8.333;
 // Middleware
 app.use(express.json());
 app.use(express.static('public'));
+
+// MongoDB Models
+const playerSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  position: { type: String, enum: ['defender', 'attacker', 'any'], default: 'any' },
+  rating: { type: Number, default: DEFAULT_RATING },
+  rating_deviation: { type: Number, default: DEFAULT_DEVIATION }
+});
+
+const matchSchema = new mongoose.Schema({
+  team1_defender: String,
+  team1_attacker: String,
+  team2_defender: String,
+  team2_attacker: String,
+  winner: Number,
+  timestamp: { type: Date, default: Date.now }
+});
+
+const Player = mongoose.model('Player', playerSchema);
+const Match = mongoose.model('Match', matchSchema);
+
+// MongoDB Connection
+mongoose.connect(mongoUri)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Helper function to make Netlify API calls
 async function callNetlifyApi(endpoint, method = 'GET', data = null) {
@@ -58,34 +82,6 @@ async function callNetlifyApi(endpoint, method = 'GET', data = null) {
   }
 }
 
-// Database setup
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err);
-    return;
-  }
-  console.log(`Connected to SQLite database at ${dbPath}`);
-  
-  // Create tables if they don't exist
-  db.run(`CREATE TABLE IF NOT EXISTS players (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE,
-    position TEXT DEFAULT 'any',
-    rating REAL DEFAULT 25.0,
-    rating_deviation REAL DEFAULT 8.333
-  )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS matches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    team1_defender TEXT,
-    team1_attacker TEXT,
-    team2_defender TEXT,
-    team2_attacker TEXT,
-    winner INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-});
-
 // Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -110,13 +106,12 @@ app.get('/api/players', async (req, res) => {
     }
   }
 
-  db.all('SELECT * FROM players ORDER BY rating DESC', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
+  try {
+    const players = await Player.find().sort({ rating: -1 });
+    res.json(players);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get players by position
@@ -135,17 +130,16 @@ app.get('/api/players/:position', async (req, res) => {
     }
   }
   
-  const query = position === 'any' 
-    ? 'SELECT * FROM players ORDER BY rating DESC' 
-    : 'SELECT * FROM players WHERE position = ? OR position = "any" ORDER BY rating DESC';
-  
-  db.all(query, position === 'any' ? [] : [position], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
+  try {
+    const query = position === 'any' 
+      ? {} 
+      : { $or: [{ position }, { position: 'any' }] };
+    
+    const players = await Player.find(query).sort({ rating: -1 });
+    res.json(players);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Add a new player
@@ -169,27 +163,22 @@ app.post('/api/players', async (req, res) => {
     }
   }
   
-  db.run(
-    'INSERT INTO players (name, position, rating, rating_deviation) VALUES (?, ?, ?, ?)',
-    [name.trim(), position, DEFAULT_RATING, DEFAULT_DEVIATION],
-    function(err) {
-      if (err) {
-        // Check for duplicate name (SQLITE_CONSTRAINT_UNIQUE error)
-        if (err.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ error: 'A player with this name already exists' });
-        }
-        return res.status(500).json({ error: err.message });
-      }
-      
-      res.status(201).json({ 
-        id: this.lastID,
-        name: name.trim(),
-        position,
-        rating: DEFAULT_RATING,
-        rating_deviation: DEFAULT_DEVIATION
-      });
+  try {
+    const player = new Player({
+      name: name.trim(),
+      position,
+      rating: DEFAULT_RATING,
+      rating_deviation: DEFAULT_DEVIATION
+    });
+    
+    await player.save();
+    res.status(201).json(player);
+  } catch (error) {
+    if (error.code === 11000) { // MongoDB duplicate key error
+      return res.status(400).json({ error: 'A player with this name already exists' });
     }
-  );
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Reset all player ratings to default values
@@ -204,16 +193,15 @@ app.post('/api/players/reset-ratings', async (req, res) => {
   }
   
   try {
-    await new Promise((resolve, reject) => {
-      db.run(
-        'UPDATE players SET rating = ?, rating_deviation = ?',
-        [DEFAULT_RATING, DEFAULT_DEVIATION],
-        (err) => {
-          if (err) reject(err);
-          else resolve();
+    await Player.updateMany(
+      {},
+      { 
+        $set: { 
+          rating: DEFAULT_RATING,
+          rating_deviation: DEFAULT_DEVIATION
         }
-      );
-    });
+      }
+    );
     
     res.json({ 
       success: true, 
@@ -247,15 +235,8 @@ app.post('/api/match', async (req, res) => {
     const playerNames = [team1.defender, team1.attacker, team2.defender, team2.attacker];
     
     // Get current ratings for all players
-    const players = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM players WHERE name IN (?, ?, ?, ?)',
-        playerNames,
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        });
-    });
-
+    const players = await Player.find({ name: { $in: playerNames } });
+    
     // Create rating objects for TrueSkill
     const ratings = {};
     players.forEach(player => {
@@ -279,36 +260,28 @@ app.post('/api/match', async (req, res) => {
 
     // Update ratings in database
     const updates = [
-      [team1.defender, newTeam1Ratings[0].mu, newTeam1Ratings[0].sigma],
-      [team1.attacker, newTeam1Ratings[1].mu, newTeam1Ratings[1].sigma],
-      [team2.defender, newTeam2Ratings[0].mu, newTeam2Ratings[0].sigma],
-      [team2.attacker, newTeam2Ratings[1].mu, newTeam2Ratings[1].sigma]
+      { name: team1.defender, rating: newTeam1Ratings[0].mu, rating_deviation: newTeam1Ratings[0].sigma },
+      { name: team1.attacker, rating: newTeam1Ratings[1].mu, rating_deviation: newTeam1Ratings[1].sigma },
+      { name: team2.defender, rating: newTeam2Ratings[0].mu, rating_deviation: newTeam2Ratings[0].sigma },
+      { name: team2.attacker, rating: newTeam2Ratings[1].mu, rating_deviation: newTeam2Ratings[1].sigma }
     ];
 
-    for (const [name, rating, deviation] of updates) {
-      await new Promise((resolve, reject) => {
-        db.run(
-          'INSERT OR REPLACE INTO players (name, rating, rating_deviation) VALUES (?, ?, ?)',
-          [name, rating, deviation],
-          (err) => {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
-      });
-    }
+    await Promise.all(updates.map(update => 
+      Player.findOneAndUpdate(
+        { name: update.name },
+        { $set: { rating: update.rating, rating_deviation: update.rating_deviation } },
+        { upsert: true }
+      )
+    ));
 
     // Record the match
-    await new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO matches (team1_defender, team1_attacker, team2_defender, team2_attacker, winner) VALUES (?, ?, ?, ?, ?)',
-        [team1.defender, team1.attacker, team2.defender, team2.attacker, winner],
-        (err) => {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
+    await new Match({
+      team1_defender: team1.defender,
+      team1_attacker: team1.attacker,
+      team2_defender: team2.defender,
+      team2_attacker: team2.attacker,
+      winner
+    }).save();
 
     res.json({ success: true });
   } catch (error) {
@@ -322,7 +295,8 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     environment: isNetlify ? 'netlify' : 'local',
-    usingNetlifyApi: useNetlifyApi
+    usingNetlifyApi: useNetlifyApi,
+    database: 'mongodb'
   });
 });
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Record Foosball Match</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="/css/output.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
@@ -83,7 +83,13 @@
             try {
                 const url = position === 'all' ? '/api/players' : `/api/players/${position}`;
                 const response = await fetch(url);
-                const players = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const players = Array.isArray(data) ? data : [];
                 
                 // Sort players by name for easier selection
                 players.sort((a, b) => a.name.localeCompare(b.name));
@@ -120,6 +126,12 @@
                 const defenders = await loadPlayersByPosition('defender');
                 const attackers = await loadPlayersByPosition('attacker');
                 const allPlayers = await loadPlayersByPosition('all');
+                
+                if (defenders.length === 0 && attackers.length === 0) {
+                    alert('No players found. Please add some players first.');
+                    window.location.href = '/users';
+                    return;
+                }
                 
                 // Populate defender dropdowns with defenders and players with 'any' position
                 populateDropdown('team1defender', defenders.concat(allPlayers.filter(p => p.position === 'any')), 'defender');
@@ -173,13 +185,13 @@
                     body: JSON.stringify(matchData)
                 });
 
-                if (response.ok) {
-                    alert('Match recorded successfully!');
-                    window.location.href = '/';
-                } else {
+                if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'Failed to record match');
                 }
+
+                alert('Match recorded successfully!');
+                window.location.href = '/';
             } catch (error) {
                 console.error('Error:', error);
                 alert(error.message || 'Error recording match. Please try again.');
