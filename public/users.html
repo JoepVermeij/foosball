@@ -26,6 +26,15 @@
                         <input type="text" id="playerName" name="playerName" required
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     </div>
+                    <div>
+                        <label for="playerPosition" class="block text-sm font-medium text-gray-700">Position</label>
+                        <select id="playerPosition" name="playerPosition" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="any">Any Position</option>
+                            <option value="defender">Defender</option>
+                            <option value="attacker">Attacker</option>
+                        </select>
+                    </div>
                     <div class="flex justify-end">
                         <button type="submit"
                             class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
@@ -39,10 +48,18 @@
             <div class="bg-white rounded-lg shadow-md p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold text-gray-700">Existing Players</h2>
-                    <button id="resetRatingsBtn" 
-                        class="bg-red-500 text-white px-3 py-1 text-sm rounded hover:bg-red-600 transition-colors">
-                        Reset All Ratings
-                    </button>
+                    <div class="flex space-x-2">
+                        <select id="positionFilter" class="text-sm rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="all">All Positions</option>
+                            <option value="defender">Defenders</option>
+                            <option value="attacker">Attackers</option>
+                            <option value="any">Any Position</option>
+                        </select>
+                        <button id="resetRatingsBtn" 
+                            class="bg-red-500 text-white px-3 py-1 text-sm rounded hover:bg-red-600 transition-colors">
+                            Reset All Ratings
+                        </button>
+                    </div>
                 </div>
                 <div class="overflow-y-auto max-h-96">
                     <ul id="playersList" class="divide-y divide-gray-200">
@@ -54,9 +71,14 @@
     </div>
 
     <script>
-        async function loadPlayers() {
+        async function loadPlayers(positionFilter = 'all') {
             try {
-                const response = await fetch('/api/players');
+                let url = '/api/players';
+                if (positionFilter !== 'all' && ['defender', 'attacker', 'any'].includes(positionFilter)) {
+                    url = `/api/players/${positionFilter}`;
+                }
+
+                const response = await fetch(url);
                 const players = await response.json();
                 
                 const playersList = document.getElementById('playersList');
@@ -67,7 +89,12 @@
                     item.className = 'py-3';
                     item.innerHTML = `
                         <div class="flex items-center justify-between">
-                            <span class="text-gray-900">${player.name}</span>
+                            <div>
+                                <span class="text-gray-900">${player.name}</span>
+                                <span class="ml-2 px-2 py-1 text-xs rounded-full ${getPositionColor(player.position)}">
+                                    ${capitalizeFirstLetter(player.position || 'Any')}
+                                </span>
+                            </div>
                             <span class="text-gray-500">Rating: ${player.rating.toFixed(2)}</span>
                         </div>
                     `;
@@ -78,10 +105,23 @@
             }
         }
 
+        function getPositionColor(position) {
+            switch(position) {
+                case 'defender': return 'bg-blue-100 text-blue-800';
+                case 'attacker': return 'bg-green-100 text-green-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
         document.getElementById('addPlayerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const playerName = document.getElementById('playerName').value.trim();
+            const playerPosition = document.getElementById('playerPosition').value;
             
             if (!playerName) {
                 alert('Please enter a player name');
@@ -94,12 +134,16 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ name: playerName })
+                    body: JSON.stringify({ 
+                        name: playerName,
+                        position: playerPosition
+                    })
                 });
                 
                 if (response.ok) {
                     document.getElementById('playerName').value = '';
-                    loadPlayers();
+                    document.getElementById('playerPosition').value = 'any';
+                    loadPlayers(document.getElementById('positionFilter').value);
                     alert('Player added successfully!');
                 } else {
                     const errorData = await response.json();
@@ -109,6 +153,10 @@
                 console.error('Error:', error);
                 alert(error.message || 'Error adding player. Please try again.');
             }
+        });
+
+        document.getElementById('positionFilter').addEventListener('change', (e) => {
+            loadPlayers(e.target.value);
         });
 
         document.getElementById('resetRatingsBtn').addEventListener('click', async () => {
@@ -125,7 +173,7 @@
                 });
                 
                 if (response.ok) {
-                    loadPlayers();
+                    loadPlayers(document.getElementById('positionFilter').value);
                     alert('All player ratings have been reset to default values.');
                 } else {
                     const errorData = await response.json();

@@ -20,12 +20,22 @@
             </div>
         </div>
 
+        <div class="mb-4">
+            <select id="positionFilter" class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <option value="all">All Positions</option>
+                <option value="defender">Defenders Only</option>
+                <option value="attacker">Attackers Only</option>
+                <option value="any">Flex Players</option>
+            </select>
+        </div>
+
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <table class="min-w-full">
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deviation</th>
                     </tr>
@@ -38,9 +48,10 @@
     </div>
 
     <script>
-        async function loadLeaderboard() {
+        async function loadLeaderboard(positionFilter = 'all') {
             try {
-                const response = await fetch('/api/players');
+                const url = positionFilter === 'all' ? '/api/players' : `/api/players/${positionFilter}`;
+                const response = await fetch(url);
                 const players = await response.json();
                 
                 const leaderboard = document.getElementById('leaderboard');
@@ -51,6 +62,11 @@
                     row.innerHTML = `
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${index + 1}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 text-xs rounded-full ${getPositionColor(player.position)}">
+                                ${capitalizeFirstLetter(player.position || 'Any')}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.rating.toFixed(2)}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.rating_deviation.toFixed(2)}</td>
                     `;
@@ -61,11 +77,27 @@
             }
         }
 
+        function getPositionColor(position) {
+            switch(position) {
+                case 'defender': return 'bg-blue-100 text-blue-800';
+                case 'attacker': return 'bg-green-100 text-green-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        document.getElementById('positionFilter').addEventListener('change', (e) => {
+            loadLeaderboard(e.target.value);
+        });
+
         // Load leaderboard on page load
         loadLeaderboard();
         
         // Refresh leaderboard every 30 seconds
-        setInterval(loadLeaderboard, 30000);
+        setInterval(() => loadLeaderboard(document.getElementById('positionFilter').value), 30000);
     </script>
 </body>
 </html> 

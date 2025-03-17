@@ -23,17 +23,17 @@
                     <div class="space-y-4">
                         <h2 class="text-xl font-semibold text-gray-700">Team 1</h2>
                         <div>
-                            <label for="team1player1" class="block text-sm font-medium text-gray-700">Player 1</label>
-                            <select id="team1player1" name="team1player1" required
+                            <label for="team1defender" class="block text-sm font-medium text-gray-700">Defender</label>
+                            <select id="team1defender" name="team1defender" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="">Select a player</option>
+                                <option value="">Select a defender</option>
                             </select>
                         </div>
                         <div>
-                            <label for="team1player2" class="block text-sm font-medium text-gray-700">Player 2</label>
-                            <select id="team1player2" name="team1player2" required
+                            <label for="team1attacker" class="block text-sm font-medium text-gray-700">Attacker</label>
+                            <select id="team1attacker" name="team1attacker" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="">Select a player</option>
+                                <option value="">Select an attacker</option>
                             </select>
                         </div>
                     </div>
@@ -42,17 +42,17 @@
                     <div class="space-y-4">
                         <h2 class="text-xl font-semibold text-gray-700">Team 2</h2>
                         <div>
-                            <label for="team2player1" class="block text-sm font-medium text-gray-700">Player 1</label>
-                            <select id="team2player1" name="team2player1" required
+                            <label for="team2defender" class="block text-sm font-medium text-gray-700">Defender</label>
+                            <select id="team2defender" name="team2defender" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="">Select a player</option>
+                                <option value="">Select a defender</option>
                             </select>
                         </div>
                         <div>
-                            <label for="team2player2" class="block text-sm font-medium text-gray-700">Player 2</label>
-                            <select id="team2player2" name="team2player2" required
+                            <label for="team2attacker" class="block text-sm font-medium text-gray-700">Attacker</label>
+                            <select id="team2attacker" name="team2attacker" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="">Select a player</option>
+                                <option value="">Select an attacker</option>
                             </select>
                         </div>
                     </div>
@@ -78,41 +78,59 @@
     </div>
 
     <script>
-        // Load all players and populate dropdowns
-        async function loadPlayers() {
+        // Load players by position
+        async function loadPlayersByPosition(position) {
             try {
-                const response = await fetch('/api/players');
+                const url = position === 'all' ? '/api/players' : `/api/players/${position}`;
+                const response = await fetch(url);
                 const players = await response.json();
                 
                 // Sort players by name for easier selection
                 players.sort((a, b) => a.name.localeCompare(b.name));
-                
-                // Get all player dropdown elements
-                const dropdowns = [
-                    document.getElementById('team1player1'),
-                    document.getElementById('team1player2'),
-                    document.getElementById('team2player1'),
-                    document.getElementById('team2player2')
-                ];
-                
-                // Populate each dropdown with player options
-                dropdowns.forEach(dropdown => {
-                    // Keep the first option (select a player)
-                    const firstOption = dropdown.options[0];
-                    dropdown.innerHTML = '';
-                    dropdown.appendChild(firstOption);
-                    
-                    // Add all players
-                    players.forEach(player => {
-                        const option = document.createElement('option');
-                        option.value = player.name;
-                        option.textContent = player.name;
-                        dropdown.appendChild(option);
-                    });
-                });
+                return players;
             } catch (error) {
-                console.error('Error loading players:', error);
-                alert('Error loading player list. Please try again later.');
+                console.error(`Error loading ${position} players:`, error);
+                return [];
+            }
+        }
+        
+        // Populate a specific dropdown with players
+        function populateDropdown(dropdownId, players, position) {
+            const dropdown = document.getElementById(dropdownId);
+            // Keep the first option (select a player)
+            const firstOption = dropdown.options[0];
+            dropdown.innerHTML = '';
+            dropdown.appendChild(firstOption);
+            
+            // Add all players
+            players.forEach(player => {
+                // Only include players that match the position or have 'any' position
+                if (position === 'all' || player.position === position || player.position === 'any') {
+                    const option = document.createElement('option');
+                    option.value = player.name;
+                    option.textContent = player.name;
+                    dropdown.appendChild(option);
+                }
+            });
+        }
+        
+        // Initialize all dropdowns
+        async function loadAllDropdowns() {
+            try {
+                const defenders = await loadPlayersByPosition('defender');
+                const attackers = await loadPlayersByPosition('attacker');
+                const allPlayers = await loadPlayersByPosition('all');
+                
+                // Populate defender dropdowns with defenders and players with 'any' position
+                populateDropdown('team1defender', defenders.concat(allPlayers.filter(p => p.position === 'any')), 'defender');
+                populateDropdown('team2defender', defenders.concat(allPlayers.filter(p => p.position === 'any')), 'defender');
+                
+                // Populate attacker dropdowns with attackers and players with 'any' position
+                populateDropdown('team1attacker', attackers.concat(allPlayers.filter(p => p.position === 'any')), 'attacker');
+                populateDropdown('team2attacker', attackers.concat(allPlayers.filter(p => p.position === 'any')), 'attacker');
+            } catch (error) {
+                console.error('Error loading players for dropdowns:', error);
+                alert('Error loading player lists. Please try again later.');
             }
         }
 
@@ -120,13 +138,13 @@
             e.preventDefault();
 
             // Get selected values from dropdowns
-            const team1player1 = document.getElementById('team1player1').value;
-            const team1player2 = document.getElementById('team1player2').value;
-            const team2player1 = document.getElementById('team2player1').value;
-            const team2player2 = document.getElementById('team2player2').value;
+            const team1Defender = document.getElementById('team1defender').value;
+            const team1Attacker = document.getElementById('team1attacker').value;
+            const team2Defender = document.getElementById('team2defender').value;
+            const team2Attacker = document.getElementById('team2attacker').value;
             
             // Validate all players are selected and no duplicates
-            const allPlayers = [team1player1, team1player2, team2player1, team2player2];
+            const allPlayers = [team1Defender, team1Attacker, team2Defender, team2Attacker];
             const uniquePlayers = new Set(allPlayers);
             
             if (uniquePlayers.size !== 4) {
@@ -135,8 +153,14 @@
             }
 
             const matchData = {
-                team1: [team1player1, team1player2],
-                team2: [team2player1, team2player2],
+                team1: {
+                    defender: team1Defender,
+                    attacker: team1Attacker
+                },
+                team2: {
+                    defender: team2Defender,
+                    attacker: team2Attacker
+                },
                 winner: parseInt(document.getElementById('winner').value)
             };
 
@@ -163,7 +187,7 @@
         });
 
         // Load players when page loads
-        loadPlayers();
+        loadAllDropdowns();
     </script>
 </body>
 </html> 
