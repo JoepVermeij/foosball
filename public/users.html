@@ -37,7 +37,13 @@
 
             <!-- Existing Players -->
             <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">Existing Players</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Existing Players</h2>
+                    <button id="resetRatingsBtn" 
+                        class="bg-red-500 text-white px-3 py-1 text-sm rounded hover:bg-red-600 transition-colors">
+                        Reset All Ratings
+                    </button>
+                </div>
                 <div class="overflow-y-auto max-h-96">
                     <ul id="playersList" class="divide-y divide-gray-200">
                         <!-- Player list will be populated here -->
@@ -102,6 +108,32 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert(error.message || 'Error adding player. Please try again.');
+            }
+        });
+
+        document.getElementById('resetRatingsBtn').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to reset all player ratings to default values? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/players/reset-ratings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    loadPlayers();
+                    alert('All player ratings have been reset to default values.');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to reset ratings');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert(error.message || 'Error resetting ratings. Please try again.');
             }
         });
 
