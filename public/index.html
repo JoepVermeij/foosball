@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foosball Leaderboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Foosball Leaderboard</h1>
+            <div class="space-x-4">
+                <a href="/match" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                    Record New Match
+                </a>
+                <a href="/users" class="text-blue-500 hover:text-blue-600">
+                    Manage Players
+                </a>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deviation</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard" class="bg-white divide-y divide-gray-200">
+                    <!-- Leaderboard rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch('/api/players');
+                const players = await response.json();
+                
+                const leaderboard = document.getElementById('leaderboard');
+                leaderboard.innerHTML = '';
+                
+                players.forEach((player, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${index + 1}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.rating.toFixed(2)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.rating_deviation.toFixed(2)}</td>
+                    `;
+                    leaderboard.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+            }
+        }
+
+        // Load leaderboard on page load
+        loadLeaderboard();
+        
+        // Refresh leaderboard every 30 seconds
+        setInterval(loadLeaderboard, 30000);
+    </script>
+</body>
+</html> 

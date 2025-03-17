@@ -1,0 +1,28 @@
+{
+  "name": "trueskill",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "A foosball rating system using TrueSkill algorithm",
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "ts-trueskill": "^1.0.0"
+  },
+  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af",
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "sqlite3"
+    ],
+    "onlyBuiltDependencies": [
+      "sqlite3"
+    ]
+  }
+}

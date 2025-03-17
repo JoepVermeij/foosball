@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Foosball Match</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Record New Match</h1>
+            <div class="space-x-4">
+                <a href="/" class="text-blue-500 hover:text-blue-600">Leaderboard</a>
+                <a href="/users" class="text-blue-500 hover:text-blue-600">Manage Players</a>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <form id="matchForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Team 1 -->
+                    <div class="space-y-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Team 1</h2>
+                        <div>
+                            <label for="team1player1" class="block text-sm font-medium text-gray-700">Player 1</label>
+                            <select id="team1player1" name="team1player1" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Select a player</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="team1player2" class="block text-sm font-medium text-gray-700">Player 2</label>
+                            <select id="team1player2" name="team1player2" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Select a player</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Team 2 -->
+                    <div class="space-y-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Team 2</h2>
+                        <div>
+                            <label for="team2player1" class="block text-sm font-medium text-gray-700">Player 1</label>
+                            <select id="team2player1" name="team2player1" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Select a player</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="team2player2" class="block text-sm font-medium text-gray-700">Player 2</label>
+                            <select id="team2player2" name="team2player2" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Select a player</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="winner" class="block text-sm font-medium text-gray-700">Winning Team</label>
+                    <select id="winner" name="winner" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="1">Team 1</option>
+                        <option value="2">Team 2</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit"
+                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                        Submit Match
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Load all players and populate dropdowns
+        async function loadPlayers() {
+            try {
+                const response = await fetch('/api/players');
+                const players = await response.json();
+                
+                // Sort players by name for easier selection
+                players.sort((a, b) => a.name.localeCompare(b.name));
+                
+                // Get all player dropdown elements
+                const dropdowns = [
+                    document.getElementById('team1player1'),
+                    document.getElementById('team1player2'),
+                    document.getElementById('team2player1'),
+                    document.getElementById('team2player2')
+                ];
+                
+                // Populate each dropdown with player options
+                dropdowns.forEach(dropdown => {
+                    // Keep the first option (select a player)
+                    const firstOption = dropdown.options[0];
+                    dropdown.innerHTML = '';
+                    dropdown.appendChild(firstOption);
+                    
+                    // Add all players
+                    players.forEach(player => {
+                        const option = document.createElement('option');
+                        option.value = player.name;
+                        option.textContent = player.name;
+                        dropdown.appendChild(option);
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading players:', error);
+                alert('Error loading player list. Please try again later.');
+            }
+        }
+
+        document.getElementById('matchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Get selected values from dropdowns
+            const team1player1 = document.getElementById('team1player1').value;
+            const team1player2 = document.getElementById('team1player2').value;
+            const team2player1 = document.getElementById('team2player1').value;
+            const team2player2 = document.getElementById('team2player2').value;
+            
+            // Validate all players are selected and no duplicates
+            const allPlayers = [team1player1, team1player2, team2player1, team2player2];
+            const uniquePlayers = new Set(allPlayers);
+            
+            if (uniquePlayers.size !== 4) {
+                alert('Please select different players for each position');
+                return;
+            }
+
+            const matchData = {
+                team1: [team1player1, team1player2],
+                team2: [team2player1, team2player2],
+                winner: parseInt(document.getElementById('winner').value)
+            };
+
+            try {
+                const response = await fetch('/api/match', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(matchData)
+                });
+
+                if (response.ok) {
+                    alert('Match recorded successfully!');
+                    window.location.href = '/';
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to record match');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert(error.message || 'Error recording match. Please try again.');
+            }
+        });
+
+        // Load players when page loads
+        loadPlayers();
+    </script>
+</body>
+</html> 
