@@ -46,6 +46,10 @@ app.get('/match', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'match.html'));
 });
 
+app.get('/teambuilder', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'teambuilder.html'));
+});
+
 app.get('/users', (req, res) => {
   const password = req.query.password;
   if (password === ADMIN_PASSWORD) {

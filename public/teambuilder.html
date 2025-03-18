@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Builder - Foosball Rating System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-4 sm:py-8">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-8">Team Builder</h1>
+
+        <!-- Navigation Menu -->
+        <nav class="bg-white shadow-md rounded-lg p-2 sm:p-4 mb-4 sm:mb-8">
+            <ul class="flex flex-wrap gap-2 sm:gap-4 text-sm sm:text-base">
+                <li><a href="/" class="text-blue-600 font-semibold px-2 py-1 rounded bg-blue-50">Home</a></li>
+                <li><a href="/match" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Record Match</a></li>
+                <li><a href="/users" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Players</a></li>
+                <li><a href="/teambuilder" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Team Builder</a></li>
+                <li><a href="/history" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">History</a></li>
+            </ul>
+        </nav>
+
+        <!-- Player Selection -->
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-8">
+            <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Select Players</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label for="player1" class="block text-sm font-medium text-gray-700 mb-1">Player 1</label>
+                    <select id="player1"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-white px-3 py-2 text-sm sm:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        <option value="">Select Player</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="player2" class="block text-sm font-medium text-gray-700 mb-1">Player 2</label>
+                    <select id="player2"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-white px-3 py-2 text-sm sm:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        <option value="">Select Player</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="player3" class="block text-sm font-medium text-gray-700 mb-1">Player 3</label>
+                    <select id="player3"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-white px-3 py-2 text-sm sm:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        <option value="">Select Player</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="player4" class="block text-sm font-medium text-gray-700 mb-1">Player 4</label>
+                    <select id="player4"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-white px-3 py-2 text-sm sm:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        <option value="">Select Player</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="findBestMatchups()"
+                class="mt-4 w-full bg-blue-600 text-white px-4 py-2 sm:py-3 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm sm:text-base font-medium transition-colors">
+                Find Best Matchups
+            </button>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="bg-white rounded-lg shadow-md p-4 sm:p-6 hidden">
+            <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Best Matchups</h2>
+            <div id="matchupsList" class="space-y-4">
+                <!-- Matchups will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allPlayers = [];
+
+        // Fetch all players
+        async function fetchAllPlayers() {
+            try {
+                const [defendersResponse, attackersResponse] = await Promise.all([
+                    fetch('/api/players/defender'),
+                    fetch('/api/players/attacker')
+                ]);
+
+                if (!defendersResponse.ok || !attackersResponse.ok) {
+                    throw new Error('Failed to fetch players');
+                }
+
+                const defenders = (await defendersResponse.json()).map(d => ({ ...d, role: "defender" }));
+                const attackers = (await attackersResponse.json()).map(a => ({ ...a, role: "attacker" }));
+
+                // Store defenders and attackers separately
+                allPlayers = {
+                    defenders: defenders,
+                    attackers: attackers
+                };
+
+                // Create a combined list of all players with both roles
+                const allPlayersCombined = [...defenders, ...attackers].reduce((acc, player) => {
+                    console.log(player);
+                    const existingPlayer = acc.find(p => p.name === player.name);
+                    if (existingPlayer) {
+                        // If player exists, add the other role's rating
+                        if (player.role === 'defender') {
+                            existingPlayer.defender_rating = player.rating;
+                        } else {
+                            existingPlayer.attacker_rating = player.rating;
+                        }
+                    } else {
+                        // If player doesn't exist, add them with their current role's rating
+                        acc.push({
+                            name: player.name,
+                            defender_rating: player.role === 'defender' ? player.rating : null,
+                            attacker_rating: player.role === 'attacker' ? player.rating : null
+                        });
+                    }
+                    return acc;
+                }, []);
+
+                // Populate all player dropdowns with both ratings
+                const playerOptions = allPlayersCombined.map(player => {
+                    const defRating = player.defender_rating ? `Def: ${player.defender_rating.toFixed(2)}` : 'No Def';
+                    const attRating = player.attacker_rating ? `Att: ${player.attacker_rating.toFixed(2)}` : 'No Att';
+                    return `<option value="${player.name}" data-defender-rating="${player.defender_rating || ''}" data-attacker-rating="${player.attacker_rating || ''}">${player.name} (${defRating} | ${attRating})</option>`;
+                }).join('');
+
+                // Add all players to all dropdowns
+                ['player1', 'player2', 'player3', 'player4'].forEach(id => {
+                    document.getElementById(id).innerHTML += playerOptions;
+                });
+
+                // Add change event listeners to prevent invalid selections
+                ['player1', 'player2', 'player3', 'player4'].forEach(id => {
+                    document.getElementById(id).addEventListener('change', validatePlayerSelection);
+                });
+            } catch (error) {
+                console.error('Error fetching players:', error);
+                alert('Failed to fetch players');
+            }
+        }
+
+        // Validate player selection
+        function validatePlayerSelection(event) {
+            const selectedOption = event.target.options[event.target.selectedIndex];
+            const selectedRole = selectedOption.dataset.role;
+            const selectedName = selectedOption.value;
+
+            // Check if this player is already selected
+            ['player1', 'player2', 'player3', 'player4'].forEach(id => {
+                if (id !== event.target.id) {
+                    const otherSelect = document.getElementById(id);
+                    const otherOption = otherSelect.options[otherSelect.selectedIndex];
+                    if (otherOption.value === selectedName) {
+                        alert('This player is already selected');
+                        event.target.value = '';
+                        return;
+                    }
+                }
+            });
+        }
+
+        // Calculate team rating
+        function calculateTeamRating(defender, attacker) {
+            const defenderSelect = document.querySelector(`option[value="${defender}"]`);
+            const attackerSelect = document.querySelector(`option[value="${attacker}"]`);
+
+            if (!defenderSelect || !attackerSelect) return 0;
+
+            const defenderRating = parseFloat(defenderSelect.dataset.defenderRating) || 0;
+            const attackerRating = parseFloat(attackerSelect.dataset.attackerRating) || 0;
+
+            return (defenderRating + attackerRating) / 2;
+        }
+
+        // Find best matchups
+        function findBestMatchups() {
+            const players = [
+                document.getElementById('player1').value,
+                document.getElementById('player2').value,
+                document.getElementById('player3').value,
+                document.getElementById('player4').value
+            ];
+
+            // Check if all players are selected
+            if (players.some(p => !p)) {
+                alert('Please select all 4 players');
+                return;
+            }
+
+            // Check for duplicates
+            if (new Set(players).size !== 4) {
+                alert('Please select 4 different players');
+                return;
+            }
+
+            // Generate all possible combinations
+            const matchups = [];
+
+            // Try all possible team combinations
+            for (let i = 0; i < 4; i++) {
+                for (let j = i + 1; j < 4; j++) {
+                    const team1 = [players[i], players[j]];
+                    const team2 = players.filter(p => !team1.includes(p));
+
+                    // Try all role combinations for team 1
+                    for (const role1 of ['defender', 'attacker']) {
+                        for (const role2 of ['defender', 'attacker']) {
+                            if (role1 === role2) continue;
+
+                            // Try all role combinations for team 2
+                            for (const role3 of ['defender', 'attacker']) {
+                                for (const role4 of ['defender', 'attacker']) {
+                                    if (role3 === role4) continue;
+
+                                    const team1Rating = calculateTeamRating(
+                                        role1 === 'defender' ? team1[0] : team1[1],
+                                        role1 === 'defender' ? team1[1] : team1[0]
+                                    );
+
+                                    const team2Rating = calculateTeamRating(
+                                        role3 === 'defender' ? team2[0] : team2[1],
+                                        role3 === 'defender' ? team2[1] : team2[0]
+                                    );
+
+                                    const ratingDiff = Math.abs(team1Rating - team2Rating);
+
+                                    matchups.push({
+                                        team1: {
+                                            defender: role1 === 'defender' ? team1[0] : team1[1],
+                                            attacker: role1 === 'defender' ? team1[1] : team1[0]
+                                        },
+                                        team2: {
+                                            defender: role3 === 'defender' ? team2[0] : team2[1],
+                                            attacker: role3 === 'defender' ? team2[1] : team2[0]
+                                        },
+                                        ratingDiff,
+                                        team1Rating,
+                                        team2Rating
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sort by rating difference and take top 5
+            matchups.sort((a, b) => a.ratingDiff - b.ratingDiff);
+            const bestMatchups = matchups;
+
+            // Display results
+            const resultsDiv = document.getElementById('results');
+            const matchupsList = document.getElementById('matchupsList');
+
+            matchupsList.innerHTML = bestMatchups.map((matchup, index) => `
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-500">Matchup ${index + 1}</span>
+                        <span class="text-sm font-medium text-gray-500">Rating Difference: ${matchup.ratingDiff.toFixed(2)}</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-sm font-medium text-gray-700">Team 1</div>
+                            <div class="text-sm text-gray-600">Defender: ${matchup.team1.defender}</div>
+                            <div class="text-sm text-gray-600">Attacker: ${matchup.team1.attacker}</div>
+                            <div class="text-sm text-gray-500">Team Rating: ${matchup.team1Rating.toFixed(2)}</div>
+                        </div>
+                        <div>
+                            <div class="text-sm font-medium text-gray-700">Team 2</div>
+                            <div class="text-sm text-gray-600">Defender: ${matchup.team2.defender}</div>
+                            <div class="text-sm text-gray-600">Attacker: ${matchup.team2.attacker}</div>
+                            <div class="text-sm text-gray-500">Team Rating: ${matchup.team2Rating.toFixed(2)}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            resultsDiv.classList.remove('hidden');
+        }
+
+        // Initial load
+        fetchAllPlayers();
+    </script>
+</body>
+
+</html>
