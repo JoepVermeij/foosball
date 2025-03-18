@@ -103,14 +103,18 @@ app.get('/api/players/:position', async (req, res) => {
       .sort({ rating: -1 })
       .toArray();
 
-    // Get match counts for each player
-    const matchCounts = await db.collection('matches')
+    // Get match counts and wins for each player
+    const playerStats = await db.collection('matches')
       .aggregate([
         {
           $project: {
             players: position === 'defender' ? 
               ['$team1.defender', '$team2.defender'] : 
-              ['$team1.attacker', '$team2.attacker']
+              ['$team1.attacker', '$team2.attacker'],
+            winners: position === 'defender' ?
+              ['$team1.defender', '$team2.defender'] :
+              ['$team1.attacker', '$team2.attacker'],
+            winner: 1
           }
         },
         {
@@ -119,26 +123,41 @@ app.get('/api/players/:position', async (req, res) => {
         {
           $group: {
             _id: '$players',
-            count: { $sum: 1 }
+            matches_played: { $sum: 1 },
+            wins: {
+              $sum: {
+                $cond: [
+                  { $eq: ['$players', { $arrayElemAt: ['$winners', { $subtract: ['$winner', 1] }] }] },
+                  1,
+                  0
+                ]
+              }
+            }
           }
         }
       ])
       .toArray();
 
-    // Create a map of player names to match counts
-    const matchCountMap = {};
-    matchCounts.forEach(({ _id, count }) => {
-      matchCountMap[_id] = count;
+    // Create a map of player names to their stats
+    const statsMap = {};
+    playerStats.forEach(({ _id, matches_played, wins }) => {
+      statsMap[_id] = {
+        matches_played,
+        wins,
+        win_rate: matches_played > 0 ? (wins / matches_played) * 100 : 0
+      };
     });
 
-    // Add match counts to players
-    const playersWithCounts = players.map(player => ({
+    // Add stats to players
+    const playersWithStats = players.map(player => ({
       ...player,
-      matches_played: matchCountMap[player.name] || 0
+      matches_played: statsMap[player.name]?.matches_played || 0,
+      wins: statsMap[player.name]?.wins || 0,
+      win_rate: statsMap[player.name]?.win_rate || 0
     }));
     
     await closeConnection();
-    res.json(playersWithCounts || []);
+    res.json(playersWithStats || []);
   } catch (error) {
     console.error('Error fetching players by position:', error);
     await closeConnection();
