@@ -148,13 +148,15 @@ app.get('/api/players/:position', async (req, res) => {
       };
     });
 
-    // Add stats to players
-    const playersWithStats = players.map(player => ({
-      ...player,
-      matches_played: statsMap[player.name]?.matches_played || 0,
-      wins: statsMap[player.name]?.wins || 0,
-      win_rate: statsMap[player.name]?.win_rate || 0
-    }));
+    // Add stats to players and filter out those with less than 5 games
+    const playersWithStats = players
+      .map(player => ({
+        ...player,
+        matches_played: statsMap[player.name]?.matches_played || 0,
+        wins: statsMap[player.name]?.wins || 0,
+        win_rate: statsMap[player.name]?.win_rate || 0
+      }))
+      .filter(player => player.matches_played >= 5); // Only include players with 5 or more games
     
     await closeConnection();
     res.json(playersWithStats || []);
