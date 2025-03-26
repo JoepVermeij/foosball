@@ -85,6 +85,35 @@
 
         // Initial load
         fetchPlayers();
+
+        async function loadLeaderboard(positionFilter = 'all') {
+            try {
+                const url = positionFilter === 'all' ? '/api/players' : `/api/players/${positionFilter}?home=true`;
+                const response = await fetch(url);
+                const players = await response.json();
+                
+                const leaderboard = document.getElementById('leaderboard');
+                leaderboard.innerHTML = '';
+                
+                players.forEach((player, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${index + 1}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 text-xs rounded-full ${getPositionColor(player.position)}">
+                                ${capitalizeFirstLetter(player.position || 'Any')}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.rating.toFixed(2)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${player.rating_deviation.toFixed(2)}</td>
+                    `;
+                    leaderboard.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+            }
+        }
     </script>
 </body>
 </html> 
