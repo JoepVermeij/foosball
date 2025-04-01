@@ -42,8 +42,8 @@
         async function fetchPlayers() {
             try {
                 const [defendersResponse, attackersResponse] = await Promise.all([
-                    fetch('/api/players/defender'),
-                    fetch('/api/players/attacker')
+                    fetch('/api/players/defender?home=true'),
+                    fetch('/api/players/attacker?home=true')
                 ]);
 
                 if (!defendersResponse.ok || !attackersResponse.ok) {
