@@ -65,9 +65,8 @@
         function displayPlayers(players, listId) {
             const list = document.getElementById(listId);
             
-            // Filter out players with less than 5 games and sort by rating
+            // Sort players by rating in descending order
             const sortedPlayers = [...players]
-                .filter(player => player.matches_played >= 5)
                 .sort((a, b) => b.rating - a.rating);
             
             list.innerHTML = sortedPlayers.map((player, index) => `

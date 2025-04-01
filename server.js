@@ -148,22 +148,18 @@ app.get('/api/players/:position', async (req, res) => {
       };
     });
 
-    // Add stats to players
-    const playersWithStats = players.map(player => ({
-      ...player,
-      matches_played: statsMap[player.name]?.matches_played || 0,
-      wins: statsMap[player.name]?.wins || 0,
-      win_rate: statsMap[player.name]?.win_rate || 0
-    }));
-
-    // Only filter players with 5+ games if this is a request from the home page
-    const isHomePage = req.query.home === 'true';
-    const filteredPlayers = isHomePage 
-      ? playersWithStats.filter(player => player.matches_played >= 5)
-      : playersWithStats;
+    // Add stats to players and filter out those with less than 5 games
+    const playersWithStats = players
+      .map(player => ({
+        ...player,
+        matches_played: statsMap[player.name]?.matches_played || 0,
+        wins: statsMap[player.name]?.wins || 0,
+        win_rate: statsMap[player.name]?.win_rate || 0
+      }))
+      .filter(player => player.matches_played >= 5); // Only include players with 5 or more games
     
     await closeConnection();
-    res.json(filteredPlayers || []);
+    res.json(playersWithStats || []);
   } catch (error) {
     console.error('Error fetching players by position:', error);
     await closeConnection();
