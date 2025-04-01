@@ -155,15 +155,9 @@ app.get('/api/players/:position', async (req, res) => {
       wins: statsMap[player.name]?.wins || 0,
       win_rate: statsMap[player.name]?.win_rate || 0
     }));
-
-    // Only filter players with 5+ games if this is a request from the home page
-    const isHomePage = req.query.home === 'true';
-    const filteredPlayers = isHomePage 
-      ? playersWithStats.filter(player => player.matches_played >= 5)
-      : playersWithStats;
     
     await closeConnection();
-    res.json(filteredPlayers || []);
+    res.json(playersWithStats || []);
   } catch (error) {
     console.error('Error fetching players by position:', error);
     await closeConnection();
