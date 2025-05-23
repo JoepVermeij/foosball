@@ -93,6 +93,8 @@
                             Rating: ${player.rating.toFixed(2)} ± ${player.rating_deviation.toFixed(2)}
                             <span class="mx-1">•</span>
                             <span>${player.win_rate.toFixed(1)}% win rate</span>
+                            <span class="mx-1">•</span>
+                            <span>${player.matches_played} matches played</span>
                         </div>
                     </div>
                     <button onclick="resetRating('${player.name}')"
