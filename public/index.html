@@ -1,91 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Foosball Rating System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-</head>
-<body class="bg-gray-100 min-h-screen">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  </head>
+  <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-4 sm:py-8">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-8">Foosball Leaderboard</h1>
-        
-        <!-- Navigation Menu -->
-        <nav class="bg-white shadow-md rounded-lg p-2 sm:p-4 mb-4 sm:mb-8">
-            <ul class="flex flex-wrap gap-2 sm:gap-4 text-sm sm:text-base">
-                <li><a href="/" class="text-blue-600 font-semibold px-2 py-1 rounded bg-blue-50">Home</a></li>
-                <li><a href="/match" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Record Match</a></li>
-                <li><a href="/users" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Players</a></li>
-                <li><a href="/teambuilder" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">Team Builder</a></li>
-                <li><a href="/history" class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50">History</a></li>
-            </ul>
-        </nav>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-8">
+        Foosball Leaderboard
+      </h1>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-            <!-- Defender Rankings -->
-            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
-                <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4">Defender Rankings</h2>
-                <div id="defenderList" class="space-y-2 sm:space-y-3"></div>
-            </div>
+      <!-- Navigation Menu -->
+      <nav class="bg-white shadow-md rounded-lg p-2 sm:p-4 mb-4 sm:mb-8">
+        <ul class="flex flex-wrap gap-2 sm:gap-4 text-sm sm:text-base">
+          <li>
+            <a
+              href="/"
+              class="text-blue-600 font-semibold px-2 py-1 rounded bg-blue-50"
+              >Home</a
+            >
+          </li>
+          <li>
+            <a
+              href="/match"
+              class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50"
+              >Record Match</a
+            >
+          </li>
+          <li>
+            <a
+              href="/users"
+              class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50"
+              >Players</a
+            >
+          </li>
+          <li>
+            <a
+              href="/teambuilder"
+              class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50"
+              >Team Builder</a
+            >
+          </li>
+          <li>
+            <a
+              href="/history"
+              class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50"
+              >History</a
+            >
+          </li>
+        </ul>
+      </nav>
 
-            <!-- Attacker Rankings -->
-            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
-                <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4">Attacker Rankings</h2>
-                <div id="attackerList" class="space-y-2 sm:space-y-3"></div>
-            </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+        <!-- Defender Rankings -->
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4">
+            Defender Rankings
+          </h2>
+          <div id="defenderList" class="space-y-2 sm:space-y-3"></div>
         </div>
+
+        <!-- Attacker Rankings -->
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4">
+            Attacker Rankings
+          </h2>
+          <div id="attackerList" class="space-y-2 sm:space-y-3"></div>
+        </div>
+      </div>
     </div>
 
     <script>
-        // Fetch and display players
-        async function fetchPlayers() {
-            try {
-                const [defendersResponse, attackersResponse] = await Promise.all([
-                    fetch('/api/players/defender'),
-                    fetch('/api/players/attacker')
-                ]);
+      // Fetch and display players
+      async function fetchPlayers() {
+        try {
+          const [defendersResponse, attackersResponse] = await Promise.all([
+            fetch("/api/players/defender"),
+            fetch("/api/players/attacker"),
+          ]);
 
-                if (!defendersResponse.ok || !attackersResponse.ok) {
-                    throw new Error('Failed to fetch players');
-                }
+          if (!defendersResponse.ok || !attackersResponse.ok) {
+            throw new Error("Failed to fetch players");
+          }
 
-                const defenders = await defendersResponse.json();
-                const attackers = await attackersResponse.json();
+          const defenders = await defendersResponse.json();
+          const attackers = await attackersResponse.json();
 
-                displayPlayers(defenders, 'defenderList');
-                displayPlayers(attackers, 'attackerList');
-            } catch (error) {
-                console.error('Error fetching players:', error);
-                alert('Failed to fetch players');
-            }
+          displayPlayers(defenders, "defenderList");
+          displayPlayers(attackers, "attackerList");
+        } catch (error) {
+          console.error("Error fetching players:", error);
+          alert("Failed to fetch players");
         }
+      }
 
-        // Display players in the specified list
-        function displayPlayers(players, listId) {
-            const list = document.getElementById(listId);
-            
-            // Sort players by rating in descending order
-            const sortedPlayers = [...players]
-                .sort((a, b) => b.rating - a.rating);
-            
-            list.innerHTML = sortedPlayers.map((player, index) => `
+      // Display players in the specified list
+      function displayPlayers(players, listId) {
+        const list = document.getElementById(listId);
+
+        // Filter players with at least 5 games played
+        const filteredPlayers = players.filter(
+          (player) => player.matches_played >= 5
+        );
+
+        // Sort players by rating in descending order
+        const sortedPlayers = [...filteredPlayers].sort(
+          (a, b) => b.rating - a.rating
+        );
+
+        list.innerHTML = sortedPlayers
+          .map(
+            (player, index) => `
                 <div class="flex items-center p-2 sm:p-3 bg-gray-50 rounded-lg">
                     <div class="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full font-semibold text-sm sm:text-base mr-2 sm:mr-3">
                         ${index + 1}
                     </div>
                     <div class="flex-1">
-                        <div class="font-medium text-gray-800 text-sm sm:text-base">${player.name}</div>
+                        <div class="font-medium text-gray-800 text-sm sm:text-base">${
+                          player.name
+                        }</div>
                         <div class="text-xs sm:text-sm text-gray-600">
-                            Rating: ${player.rating.toFixed(2)} ± ${player.rating_deviation.toFixed(2)}
+                            Rating: ${player.rating.toFixed(
+                              2
+                            )} ± ${player.rating_deviation.toFixed(2)}
                         </div>
                     </div>
                 </div>
-            `).join('');
-        }
+            `
+          )
+          .join("");
+      }
 
-        // Initial load
-        fetchPlayers();
+      // Initial load
+      fetchPlayers();
     </script>
-</body>
-</html> 
+  </body>
+</html>
